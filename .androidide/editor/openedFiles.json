@@ -1,0 +1,20 @@
+{
+  "allFiles": [
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/ComposeApp/app/src/main/java/com/clint/composeapp/MainActivity.kt",
+      "selection": {
+        "end": {
+          "column": 31,
+          "index": 11960,
+          "line": 330
+        },
+        "start": {
+          "column": 31,
+          "index": 11960,
+          "line": 330
+        }
+      }
+    }
+  ],
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/ComposeApp/app/src/main/java/com/clint/composeapp/MainActivity.kt"
+}

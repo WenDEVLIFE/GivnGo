@@ -1,0 +1,83 @@
+
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+}
+
+android {
+    namespace 'com.clint.composeapp'
+    compileSdk 34
+    
+    defaultConfig {
+        applicationId "com.clint.composeapp"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+        
+        vectorDrawables { 
+            useSupportLibrary true
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    buildFeatures {
+        
+        compose true
+    }
+    composeOptions {
+    kotlinCompilerExtensionVersion '1.5.3' // Or use a matching version for your Compose setup
+}
+
+    packagingOptions {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+  kotlinOptions {
+    jvmTarget = "11"
+  }
+}
+
+dependencies {
+    implementation(platform("androidx.compose:compose-bom:2022.10.00"))
+
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.material3:material3")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("androidx.compose.ui:ui")
+    implementation 'com.canopas.compose-animated-navigationbar:bottombar:1.0.1'
+
+    implementation "androidx.core:core-ktx:1.10.1"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.6.1"
+    implementation "androidx.activity:activity-compose:1.7.2"
+    
+    // Jetpack Compose dependencies
+    implementation "androidx.compose.ui:ui:1.5.0"
+    implementation "androidx.compose.material:material:1.5.0"
+    
+    // Navigation Component dependency
+    implementation "androidx.navigation:navigation-compose:2.6.0" // Add this line for navigation support
+
+    // Kotlin coroutines
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+
+    debugImplementation "androidx.compose.ui:ui-tooling:1.5.0"
+}
+
