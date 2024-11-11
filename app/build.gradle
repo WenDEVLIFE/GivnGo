@@ -69,6 +69,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.animation:animation") 
     implementation("androidx.compose.material:material-icons-extended")
+    implementation 'com.google.firebase:firebase-storage-ktx:21.0.1'
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
