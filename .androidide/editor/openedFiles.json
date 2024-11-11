@@ -1,20 +1,65 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/ComposeApp/app/src/main/java/com/clint/composeapp/MainActivity.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/GivnGo/app/src/main/java/com/go/givngo/MainActivity.kt",
       "selection": {
         "end": {
-          "column": 31,
-          "index": 11960,
-          "line": 330
+          "column": 0,
+          "index": 150168,
+          "line": 3992
         },
         "start": {
-          "column": 31,
-          "index": 11960,
-          "line": 330
+          "column": 4,
+          "index": 149086,
+          "line": 3963
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/GivnGo/app/src/main/res/xml/network_security_config.xml",
+      "selection": {
+        "end": {
+          "column": 38,
+          "index": 38,
+          "line": 0
+        },
+        "start": {
+          "column": 38,
+          "index": 38,
+          "line": 0
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/GivnGo/app/src/main/res/xml/backup_rules.xml",
+      "selection": {
+        "end": {
+          "column": 38,
+          "index": 38,
+          "line": 0
+        },
+        "start": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/GivnGo/app/src/main/AndroidManifest.xml",
+      "selection": {
+        "end": {
+          "column": 68,
+          "index": 389,
+          "line": 9
+        },
+        "start": {
+          "column": 68,
+          "index": 389,
+          "line": 9
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/ComposeApp/app/src/main/java/com/clint/composeapp/MainActivity.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/GivnGo/app/src/main/AndroidManifest.xml"
 }

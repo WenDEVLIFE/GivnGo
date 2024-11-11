@@ -14,6 +14,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "ComposeApp"
+rootProject.name = "GivnGo"
 
 include(":app")
