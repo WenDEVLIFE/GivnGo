@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.go.givngo" />
+                  <option name="mobileSdkAppId" value="1:859018352685:android:68e343d1d096cef8e480a4" />
+                  <option name="projectId" value="givngo-584eb" />
+                  <option name="projectNumber" value="859018352685" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
