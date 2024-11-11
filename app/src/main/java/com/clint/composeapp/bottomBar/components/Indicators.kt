@@ -20,9 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-
-import com.clint.composeapp.R
 import com.clint.composeapp.bottomBar.utils.customWormTransition
+import com.go.givngo.R
 
 @Composable
 internal fun LineIndicator(

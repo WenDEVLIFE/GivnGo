@@ -52,16 +52,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.graphics.toArgb
 
-import androidx.activity.enableEdgeToEdge
+import androidx.compose.ui.layout.Layout
+
+import com.go.givngo.R
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-    enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        
-        
-        
         setContent {
             MyComposeApplicationTheme {
                 MyApp()

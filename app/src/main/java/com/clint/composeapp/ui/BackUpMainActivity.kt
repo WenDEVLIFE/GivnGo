@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 
 import kotlinx.coroutines.launch
-import com.clint.composeapp.R
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -36,15 +35,17 @@ import androidx.navigation.compose.rememberNavController
 
 import androidx.navigation.compose.currentBackStackEntryAsState
 
-import com.example.bottombar.model.*
-import com.example.bottombar.*
-import com.example.bottombar.components.*
-
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 
 // Make sure to import the Image composable
 import androidx.compose.foundation.Image // For using Image composable
+import com.clint.composeapp.bottomBar.AnimatedBottomBar
+import com.clint.composeapp.bottomBar.components.BottomBarItem
+import com.clint.composeapp.bottomBar.model.IndicatorDirection
+import com.clint.composeapp.bottomBar.model.IndicatorStyle
+import com.clint.composeapp.bottomBar.model.ItemStyle
+import com.go.givngo.R
 
 class BackUpMainActivity : ComponentActivity() {
 
