@@ -130,3 +130,50 @@ fun HomeScreenRecipient(navController: NavController, setSelectedItem: (Int) -> 
         )
     }
 }
+
+@Composable
+fun HomeScreenRider(navController: NavController, setSelectedItem: (Int) -> Unit) {
+        
+          var selectedCategory by remember { mutableStateOf("Meals") }
+    val scrollState = rememberScrollState()
+    val density = LocalDensity.current
+    
+    val pushDownOverscrollEffect = rememberPushDownOverscrollEffect()
+
+    val maxPadding = 100.dp
+    val paddingTop = derivedStateOf {
+        val paddingPx = with(density) { maxPadding.toPx() - scrollState.value }
+        paddingPx.coerceIn(0f, with(density) { maxPadding.toPx() })
+    }.value
+    
+    userProfileAlignment()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = with(density) { paddingTop.toDp() }) // Apply padding directly
+            .clip(RoundedCornerShape(topStart = 23.dp, topEnd = 23.dp))
+            .overScroll(overscrollEffect = pushDownOverscrollEffect
+      )
+            .background(color = Color.White)
+    ) {
+        GreetingSection()
+        Spacer(modifier = Modifier.height(20.dp))
+        topCategoryRider()
+        Spacer(modifier = Modifier.height(8.dp))
+        CarouselRowRider()
+        Spacer(modifier = Modifier.height(18.dp))
+        HorizontalLine()
+        Spacer(modifier = Modifier.height(18.dp))
+        BottomHeadline()
+        Spacer(modifier = Modifier.height(18.dp))
+        RiderBrowseOptions(navController, setSelectedItem)  
+        Spacer(modifier = Modifier.height(40.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(16.dp)
+                .background(color = Color.Transparent)
+        )
+    }
+}

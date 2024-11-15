@@ -32,3 +32,24 @@ fun topCategoryRecipient() {
         )
     }
 }
+
+@Composable
+fun topCategoryRider() {
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),  // Ensures the column takes the full width
+        horizontalAlignment = Alignment.Start // Aligns the content to the start
+    ) {
+        Text(
+            text = "Uncover New Ways To Help!",
+            fontSize = 20.sp,
+            color = Color(0xFF8070F6),
+            modifier = Modifier
+                .padding(start = 25.dp) // Padding from the start for centering purpose
+                .fillMaxWidth(),  // Ensures the text takes the full width
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Start // Align text to the start within the text box
+        )
+    }
+}
+

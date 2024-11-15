@@ -124,3 +124,33 @@ fun CarouselExplores(
         }
     }
 }
+
+@Composable
+fun CarouselRowRider() {
+    Box(
+        modifier = Modifier.fillMaxWidth(), // Fill the width of the screen
+        contentAlignment = Alignment.CenterStart // Align content to start but centered horizontally
+    ) {
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(start = 25.dp)
+        ) {
+           CarouselExplores(
+                title = "13 Ways to Donate",
+                width = 230.dp,
+                drawableResId = R.drawable.ic_homeheart,
+                websiteUrl = "https://www.usatoday.com/story/money/personalfinance/budget-and-spending/2017/10/27/13-ways-give-charity-without-breaking-your-budget/792720001/",
+                imageUrl = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTYh5tt4OajOwQouFN0hBn-J66QrREp-_Gm43NKG-MKiovxJZ0Q8CeLlIQ&s=10"
+            )
+            CarouselExplores(
+                title = "Benefits of a donor",
+                width = 200.dp,
+                drawableResId = R.drawable.ic_homeheart,
+                websiteUrl = "https://muslimi.com/food-donation-how-giving-surplus-food-can-help-fight-hunger-and-reduce-waste/",
+                imageUrl = "https://muslimi.com/wp-content/uploads/2023/04/da.jpg"
+            )
+        }
+    }
+}
+
