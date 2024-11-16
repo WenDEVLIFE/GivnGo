@@ -205,8 +205,8 @@ drawerScrimColor = Color.Black.copy(alpha = 0.12f),
                 modifier = Modifier.padding(innerPadding)
             ) {
                 composable(RiderNavigationScreen.Home.route) { HomeScreenRider(navController, setSelectedItem = { selectedItem = 0 }) }
-        composable(RiderNavigationScreen.Deliv.route) { donationPoints() }
-     composable(RiderNavigationScreen.MyRoutes.route) { myDonations() }
+        composable(RiderNavigationScreen.Deliv.route) { AvailableDeliveriesSection() }
+     composable(RiderNavigationScreen.MyRoutes.route) { MyRoutesSection() }
             }
         }
     }
@@ -298,3 +298,15 @@ val context = LocalContext.current
     }
     }
 
+// Model will be donation column box then inside row Image then width space 10.dp Column text Donation title and bottom donation description after column then Image ArrowRight align end padding end 10.dp then outside the box with row and column another column where nested inside the rows columns is Text pending request status spacing height 10.dp
+@Composable
+fun AvailableDeliveriesSection(){
+  
+}
+
+
+//A status of delivery informations of the rider with three rounded corners tabs "Completed" "Delivery" "Pick-ups"
+@Composable
+fun MyRoutesSection(){
+  
+}
