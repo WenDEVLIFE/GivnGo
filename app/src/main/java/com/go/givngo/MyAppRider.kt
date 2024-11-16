@@ -48,7 +48,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.go.givngo.Model.MainNavRecipient
+
 import com.go.givngo.bottomBar.AnimatedBottomBar
 import com.go.givngo.bottomBar.components.BottomBarItem
 import com.go.givngo.bottomBar.model.IndicatorDirection
@@ -199,7 +199,7 @@ drawerScrimColor = Color.Black.copy(alpha = 0.12f),
                 }
             }
         ) { innerPadding ->
-        NavHost(
+        androidx.navigation.compose.NavHost(
                 navController = navController,
                 startDestination = RiderNavigationScreen.Home.route,
                 modifier = Modifier.padding(innerPadding)
@@ -210,6 +210,12 @@ drawerScrimColor = Color.Black.copy(alpha = 0.12f),
             }
         }
     }
+}
+
+sealed class RiderNavigationScreen(val route: String, val iconResId: Int, val title: String) {
+    object Home : RiderNavigationScreen("Home", R.drawable.ic_homeheart, "Home")
+    object Deliv : RiderNavigationScreen("Deliveries", R.drawable.ic_deliveries, "Deliveries")
+    object MyRoutes : RiderNavigationScreen("My Routes", R.drawable.ic_deliveries, "My Routes")
 }
 
 @Composable
@@ -227,7 +233,7 @@ val context = LocalContext.current
                     .background(color = Color(0xFFF6F5FF), shape = RoundedCornerShape(25.dp))
                     .clickable {
                         setSelectedItem(1)
-                        navController.navigate(MainNavRecipient.Donations.route)
+                        navController.navigate(RiderNavigationScreen.Deliv.route)
                     }
                     .wrapContentWidth()
             ) {
@@ -291,11 +297,4 @@ val context = LocalContext.current
         }
     }
     }
-
-@Composable
-fun DeliveryButton(text: String) {
-    Button(onClick = { /* Handle button click */ }) {
-        Text(text = text)
-    }
-}
 

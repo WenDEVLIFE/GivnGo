@@ -222,11 +222,7 @@ sealed class MainNavigation(val route: String, val iconResId: Int, val title: St
     object MyDonations : MainNavigation("My Donations", R.drawable.ic_deliveries, "My Donations")
 }
 
-sealed class RiderNavigationScreen(val route: String, val iconResId: Int, val title: String) {
-    object Home : RiderNavigationScreen("Home", R.drawable.ic_homeheart, "Home")
-    object Deliv : RiderNavigationScreen("Deliveries", R.drawable.ic_deliveries, "Deliveries")
-    object MyRoutes : RiderNavigationScreen("My Routes", R.drawable.ic_deliveries, "My Routes")
-}
+
 
 
 
