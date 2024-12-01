@@ -366,7 +366,7 @@ val ticketIdMyRoutes = myrouteTen
                   
             /* rider */        "DropOff" -> confirmDropOff(address, quantity,donTitle,donDesc,donorName,donThumb, donationPackageRequest.donorEmail,recipientEmail,documentId, documentIdFromRec)
                     "InTransit" -> packageInTransit(addressRecipient, donQuantity, donTitleTwo, donDescTwo, donorName, donthumbnail, donationPackageView.emailRider)
-            /* rider */     "Delivered" -> packageRecievedRecipient(address, quantity,donTitleTwo,donDescTwo,donorName,donThumbTwo, donationPackageView.emailRider,documentId, donationPackageView.documentId,timeRecieved)
+            /* rider */     "Delivered" -> packageRecievedRecipient(address, quantity,donTitleTwo,donDescTwo,donorEmail,donThumbTwo, donationPackageView.emailRider,documentId, donationPackageView.documentId,timeRecieved)
                    "Confirmation" -> requestView(address, quantity,donTitle,donDesc,donorName,donThumb,donationPackageRequest.donorEmail,recipientEmail, documentId,donTimePackedByDonor,donScheduleStatus)
                     else -> requestView(address, quantity,donTitle,donDesc,donorName,donThumb,donationPackageRequest.donorEmail,recipientEmail, documentId,donTimePackedByDonor,donScheduleStatus)
                 }
@@ -460,7 +460,7 @@ fun packageRecievedRecipient(
     Quantity: String,
     donTitle: String,
     donDesc: String,
-    donOwner: String,
+    donEmail: String,
     donThumb: String,
     emailRider: String,
     documentIdFromRider: String,
@@ -473,12 +473,43 @@ fun packageRecievedRecipient(
     val db = FirebaseFirestore.getInstance()
     val accountsRef = db.collection("GivnGoAccounts")
     var accountFound = false
+    var accountFoundTwo = false
     var riderFN by remember { mutableStateOf("") }
     var riderLN by remember { mutableStateOf("") }
+    var donorName by remember { mutableStateOf("") }
     var riderPic by remember { mutableStateOf("") }
     var riderCourrierType by remember { mutableStateOf("") }
     var documentIdFromRiders by remember { mutableStateOf("") }
-
+    
+    fun listenToAccountChangesRecipient(collectionPath: String, email: String) {
+                
+                accountsRef.document(collectionPath).collection("Donor")
+            .document(email)
+            .addSnapshotListener { documentSnapshot, error ->
+                if (error != null) {
+                    // Handle error
+                    return@addSnapshotListener
+                }
+                if (documentSnapshot != null && documentSnapshot.exists()) {
+                    // Extract data from the document
+                    donorName = documentSnapshot.getString("OrganizationName") ?: ""
+                    accountFoundTwo= true
+                    }
+            }
+    }
+    
+    LaunchedEffect(Unit) {
+        listenToAccountChangesRecipient("BasicAccounts", donEmail)
+        
+        if (!accountFoundTwo) {
+            listenToAccountChangesRecipient("VerifiedAccounts", donEmail)
+            
+        }
+    }
+    
+    
+     
+     
     fun listenToAccountChangesDonorGet(collectionPath: String, email: String) {
         accountsRef.document(collectionPath).collection("Rider")
             .document(email)
@@ -553,7 +584,7 @@ fun packageRecievedRecipient(
         
 
             displayPackageInformationTwo(
-                "$donTitle", "$donDesc", "$donOwner", "Mark Recieved by Rider", donThumb, onRowClick = {}
+                "$donTitle", "$donDesc", "$donorName", "Mark Recieved by Rider", donThumb, onRowClick = {}
             )
     }
 }
