@@ -100,8 +100,8 @@ class MapViewModel : ViewModel() {
             Toast.makeText(context, "Error getting location", Toast.LENGTH_SHORT).show()
         }
     }
-    
-    
+
+
 
     private fun requestNewLocationData(context: Context) {
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
@@ -122,7 +122,12 @@ class MapViewModel : ViewModel() {
                 }
             }
         }
-        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
+        try {
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
+        } catch (e: SecurityException) {
+            Log.e("MapDebug", "Permission denied: ${e.message}")
+            Toast.makeText(context, "Permission denied", Toast.LENGTH_SHORT).show()
+        }
     }
 
     fun searchAddressAndRoute(
