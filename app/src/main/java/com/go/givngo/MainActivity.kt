@@ -171,6 +171,7 @@ class MainActivity : ComponentActivity() {
                 val statusUser = SharedPreferences.getStatusType(context) ?: "Developer"
                 val finishBasic = intent.getStringExtra("signup_finish_basic") ?: "Developer"
                 val userCurrentSignedInEmail = SharedPreferences.getEmail(context) ?: "Developer@gmail.com"
+                val db = FirebaseFirestore.getInstance()
                 val accountsRef = db.collection("GivnGoAccounts")
 
 
@@ -200,8 +201,6 @@ class MainActivity : ComponentActivity() {
                                 .addOnSuccessListener {
                                     Log.d("FCM", "FCM token updated successfully")
                                     
-                                    val intent = Intent(context, MainActivity::class.java)
-                                    context.startActivity(intent)
                                 }
                                 .addOnFailureListener { e ->
                                     Log.w("FCM", "Error updating FCM token", e)
@@ -226,8 +225,6 @@ class MainActivity : ComponentActivity() {
                                 .addOnSuccessListener {
                                     Log.d("FCM", "FCM token updated successfully")
                                     
-                                    val intent = Intent(context, MainActivity::class.java)
-                                    context.startActivity(intent)
                                 }
                                 .addOnFailureListener { e ->
                                     Log.w("FCM", "Error updating FCM token", e)
@@ -253,8 +250,6 @@ class MainActivity : ComponentActivity() {
                                 .addOnSuccessListener {
                                     Log.d("FCM", "FCM token updated successfully")
                                     
-                                    val intent = Intent(context, MainActivity::class.java)
-                                    context.startActivity(intent)
                                 }
                                 .addOnFailureListener { e ->
                                     Log.w("FCM", "Error updating FCM token", e)
