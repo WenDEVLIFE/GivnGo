@@ -77,9 +77,9 @@ fun donationPoints() {
                             "Meals" -> mealsPoints = points
                             "Clothings" -> clothingsPoints = points
                             "Furnitures" -> furnituresPoints = points
-                            "Books" -> booksPoints = points
-                            "Stationery" -> stationeryPoints = points
-                            "Households items" -> householdsPoints = points
+                            "Books/Stationery" -> booksPoints = points
+                            "Toys" -> stationeryPoints = points
+                            "Daily Necessities" -> householdsPoints = points
                         }
                     }
 
@@ -164,7 +164,7 @@ fun donationPoints() {
 
                 pointsCategoryFurnitures(
                     pointsCardsTitles = "Furnitures",
-                    imageUrl = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSy4sMWflhyMMxwYxxYjPt5Z5SP62WZhLam40lxef5RZmtQcFp0u5uEFns&s=10",
+                    imageUrl = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTAdsL7lB8NFQbA5S6mNqI8axzV9_d5SdNBLVxZ9lL7VWZ4eifJcmO-zhI&s=10",
                     eachPointsCard = 4,
                     initialNewPointsEachCategory = furnituresPoints
                 )
@@ -172,8 +172,8 @@ fun donationPoints() {
                 Spacer(modifier = Modifier.height(12.dp))
 
                 pointsCategoryBooks(
-                    pointsCardsTitles = "Books",
-                    imageUrl = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSy4sMWflhyMMxwYxxYjPt5Z5SP62WZhLam40lxef5RZmtQcFp0u5uEFns&s=10",
+                    pointsCardsTitles = "Books/Stationery",
+                    imageUrl = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT_eG3HPE7h_L-XIK8AbYVi7ovWSadwLpYIvg&usqp=CAU",
                     eachPointsCard = 2,
                     initialNewPointsEachCategory = booksPoints
                 )
@@ -181,17 +181,17 @@ fun donationPoints() {
                 Spacer(modifier = Modifier.height(12.dp))
 
                 pointsCategoryStationery(
-                    pointsCardsTitles = "Stationery",
-                    imageUrl = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSy4sMWflhyMMxwYxxYjPt5Z5SP62WZhLam40lxef5RZmtQcFp0u5uEFns&s=10",
-                    eachPointsCard = 2,
+                    pointsCardsTitles = "Toys",
+                    imageUrl = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9pxdThd5_YsFcq6owq46FYHlKwtJ-7zIYRVoZnYTq3KKNGvSwdWX_O0-x&s=10",
+                    eachPointsCard = 5,
                     initialNewPointsEachCategory = stationeryPoints
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 pointsCategoryHouseholds(
-                    pointsCardsTitles = "Households items",
-                    imageUrl = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSy4sMWflhyMMxwYxxYjPt5Z5SP62WZhLam40lxef5RZmtQcFp0u5uEFns&s=10",
+                    pointsCardsTitles = "Daily Necessities",
+                    imageUrl = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQAwumaBlvyQbaJYsk8E0W4N0tW5KzfTNeI2Q&usqp=CAU",
                     eachPointsCard = 8,
                     initialNewPointsEachCategory = householdsPoints
                 )
