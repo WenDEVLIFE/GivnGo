@@ -170,7 +170,10 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val statusUser = SharedPreferences.getStatusType(context) ?: "Developer"
                 val finishBasic = intent.getStringExtra("signup_finish_basic") ?: "Developer"
-                
+                val userCurrentSignedInEmail = SharedPreferences.getEmail(context) ?: "Developer@gmail.com"
+                val accountsRef = db.collection("GivnGoAccounts")
+
+
                 val activity = (context as MainActivity)
 
                 BackHandler {
@@ -181,12 +184,84 @@ class MainActivity : ComponentActivity() {
                 
                 when (statusUser) {
                     "Donor" -> {
+                    
+                    
+                    FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                            if (!task.isSuccessful) {
+                                Log.w("FCM", "Fetching FCM registration token failed", task.exception)
+                                return@addOnCompleteListener
+                            }
+                            val fcmToken = task.result
+                            
+                            accountsRef.document("BasicAccounts")
+                                .collection("Donor")
+                                .document(userCurrentSignedInEmail)
+                                .update("fcmToken", fcmToken)
+                                .addOnSuccessListener {
+                                    Log.d("FCM", "FCM token updated successfully")
+                                    
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.w("FCM", "Error updating FCM token", e)
+                                }
+                            
+                            }
+                    
                         MyAppDonor(userFinishBasic = finishBasic)
                     }
                     "Recipient" -> {
+                    FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                            if (!task.isSuccessful) {
+                                Log.w("FCM", "Fetching FCM registration token failed", task.exception)
+                                return@addOnCompleteListener
+                            }
+                            val fcmToken = task.result
+                            
+                            accountsRef.document("BasicAccounts")
+                                .collection("Recipient")
+                                .document(userCurrentSignedInEmail)
+                                .update("fcmToken", fcmToken)
+                                .addOnSuccessListener {
+                                    Log.d("FCM", "FCM token updated successfully")
+                                    
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.w("FCM", "Error updating FCM token", e)
+                                }
+                            
+                            }
+                            
                         MyAppRecipient(userFinishBasic = finishBasic)
                     }
                     "Rider" -> {
+                    
+                    FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                            if (!task.isSuccessful) {
+                                Log.w("FCM", "Fetching FCM registration token failed", task.exception)
+                                return@addOnCompleteListener
+                            }
+                            val fcmToken = task.result
+                            
+                            accountsRef.document("BasicAccounts")
+                                .collection("Rider")
+                                .document(userCurrentSignedInEmail)
+                                .update("fcmToken", fcmToken)
+                                .addOnSuccessListener {
+                                    Log.d("FCM", "FCM token updated successfully")
+                                    
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.w("FCM", "Error updating FCM token", e)
+                                }
+                            
+                            }
+                            
                         // Add logic for Rider if needed
                         MyAppRider(userFinishBasic = finishBasic)
                     }
