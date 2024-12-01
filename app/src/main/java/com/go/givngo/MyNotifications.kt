@@ -161,6 +161,8 @@ import com.android.volley.toolbox.Volley
 
 
 
+import com.go.givngo.donorSide.assignRider
+
 class MyNotifications : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -181,65 +183,110 @@ data class ClaimNotification(
     val documentId: String,
     val title: String,
     val body: String,
+    val deliverymethod: String,
+    val thumbnail: String?,
+    val recipientEmail: String,
+    val timestamp: Long
+)
+
+data class deliveryReuqest(
+    val title: String,
+    val body: String,
     val thumbnail: String?,
     val timestamp: Long
 )
 
 
+
 @Composable
 fun MyNoti() {
-    
-    val scrollState = rememberScrollState()
 
+    val scrollState = rememberScrollState()
     val scaffoldState = rememberScaffoldState()
     val coroutineScope = rememberCoroutineScope()
 
     val context = LocalContext.current
     val activity = context as MyNotifications
     val notifications = remember { mutableStateListOf<ClaimNotification>() }
+    val notificationsRider = remember { mutableStateListOf<deliveryReuqest>() }
     val firestore = FirebaseFirestore.getInstance()
     val statusUser = SharedPreferences.getStatusType(context) ?: "Developer"
-
+    
     // Fetch notifications from Firestore
     LaunchedEffect(Unit) {
-    val userAccountType = SharedPreferences.getBasicType(context) ?: "BasicAccounts"
+        val userAccountType = SharedPreferences.getBasicType(context) ?: "BasicAccounts"
         val recipientEmail = SharedPreferences.getEmail(context) ?: "Developer"
 
-when (statusUser) {
-  "Donor" -> {
-  firestore.collection("GivnGoAccounts")
-            .document(userAccountType) // or "VerifiedAccounts"
-            .collection("Donor")
-            .document(recipientEmail)
-            .collection("MyNotifications")
-            .document("ClaimedDonations")
-            .collection("Notification")
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .get()
-            .addOnSuccessListener { result ->
-                val fetchedNotifications = result.mapNotNull { doc ->
-                    val data = doc.data
-                    val thumbnail = data["thumbnail"] as? String
-                    val title = data["title"] as? String ?: "No Title"
-                    val body = data["body"] as? String ?: "No Body"
-                    val timestamp = data["timestamp"] as? Long ?: System.currentTimeMillis()
+        when (statusUser) {
+            "Donor" -> {
+                firestore.collection("GivnGoAccounts")
+                    .document(userAccountType) // or "VerifiedAccounts"
+                    .collection("Donor")
+                    .document(recipientEmail)
+                    .collection("MyNotifications")
+                    .document("ClaimedDonations")
+                    .collection("Notification")
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    .get()
+                    .addOnSuccessListener { result ->
+                        val fetchedNotifications = result.mapNotNull { doc ->
+                            val data = doc.data
+                            val documentId = data["document_id"] as? String ?: "No Document"
+                            val thumbnail = data["thumbnail"] as? String
+                            val title = data["title"] as? String ?: "No Title"
+                            val body = data["body"] as? String ?: "No Body"
+                            val deliveryMethod = data["Delivery_method"] as? String ?: "No delivery method"
+                            val timestamp = data["timestamp"] as? Long ?: System.currentTimeMillis()
+                            val recEmail = data["recipient_email"] as? String ?: "No email"
+                            ClaimNotification(
+                                documentId = documentId,
+                                title = title,
+                                body = body,
+                                deliverymethod = deliveryMethod,
+                                thumbnail = thumbnail,
+                                recipientEmail = recEmail,
+                                timestamp = timestamp
+                            )
+                        }
+                        notifications.addAll(fetchedNotifications)
+                    }
+                    .addOnFailureListener { exception ->
+                        Log.e("Firestore", "Error fetching notifications: ", exception)
+                    }
+            }
 
-                    ClaimNotification(
-                        documentId = doc.id,
-                        title = title,
-                        body = body,
-                        thumbnail = thumbnail,
-                        timestamp = timestamp
-                    )
-                }
-                notifications.addAll(fetchedNotifications)
+            "Rider" -> {
+                firestore.collection("GivnGoAccounts")
+                    .document(userAccountType) // or "VerifiedAccounts"
+                    .collection("Rider")
+                    .document(recipientEmail)
+                    .collection("MyNotifications")
+                    .document("DeliveryRequest")
+                    .collection("Notification")
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    .get()
+                    .addOnSuccessListener { result ->
+                        val fetchedNotifications = result.mapNotNull { doc ->
+                            val data = doc.data
+                            val thumbnail = data["profileImage"] as? String
+                            val title = data["notification_title"] as? String ?: "No Title"
+                            val body = data["donationDescription"] as? String ?: "No Body"
+                            val timestamp = data["timestamp"] as? Long ?: System.currentTimeMillis()
+
+                            deliveryReuqest(
+                                title = title,
+                                body = body,
+                                thumbnail = thumbnail,
+                                timestamp = timestamp
+                            )
+                        }
+                        notificationsRider.addAll(fetchedNotifications)
+                    }
+                    .addOnFailureListener { exception ->
+                        Log.e("Firestore", "Error fetching notifications: ", exception)
+                    }
             }
-            .addOnFailureListener { exception ->
-                Log.e("Firestore", "Error fetching notifications: ", exception)
-            }
-  }
-}
-        
+        }
     }
 
     SideEffect {
@@ -266,51 +313,68 @@ when (statusUser) {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-            
-             Column(
-        modifier = Modifier
-            .fillMaxWidth()
-    ) {
-    
-                
-                // Display notifications if any are found
-                if (notifications.isNotEmpty()) {
-                
-                Text(
-            text = "New Donation Claims!",
-            fontSize = 20.sp,
-            color = Color(0xFF8070F6),
-            modifier = Modifier
-                .padding(start = 25.dp) // Padding from the start for centering purpose
-                .fillMaxWidth(),  // Ensures the text takes the full width
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Start // Align text to the start within the text box
-        )
-        
-                    LazyVerticalGrid(
-                        modifier = Modifier.fillMaxSize(),
-                        columns = GridCells.Fixed(1)
-                    ) {
-                        items(notifications) { notification ->
-                            NotificationItem(notification = notification)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
+                    when (statusUser) {
+                        "Donor" -> {
+                            if (notifications.isNotEmpty()) {
+                                Text(
+                                    text = "New Donation Claims!",
+                                    fontSize = 18.sp,
+                                    color = Color(0xFF8070F6),
+                                    modifier = Modifier
+                                        .padding(start = 25.dp)
+                                        .fillMaxWidth(),
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Start
+                                )
+
+                                LazyVerticalGrid(
+                                    modifier = Modifier.fillMaxSize(),
+                                    columns = GridCells.Fixed(1)
+                                ) {
+                                    items(notifications) { notification ->
+                                        NotificationItem(notification = notification)
+                                    }
+                                }
+                            } else {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Text(text = "No notifications available")
+                                }
+                            }
+                        }
+
+                        "Rider" -> {
+                            if (notificationsRider.isNotEmpty()) {
+                                LazyVerticalGrid(
+                                    modifier = Modifier.fillMaxSize(),
+                                    columns = GridCells.Fixed(1)
+                                ) {
+                                    items(notificationsRider) { notification ->
+                                        NotificationItemTwo(notification = notification)
+                                    }
+                                }
+                            } else {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Text(text = "No notifications available")
+                                }
+                            }
                         }
                     }
-                } else {
-                    // Display a message when there are no notifications
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Text(text = "No notifications available")
-                    }
-                }
-                
-                
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun LottieAnimationFromUrlNotification(url: String) {
@@ -322,6 +386,54 @@ fun LottieAnimationFromUrlNotification(url: String) {
             .size(130.dp) // Adjust the size as needed
     )
 }
+
+@Composable
+fun NotificationItemTwo(notification: deliveryReuqest) {
+val context = LocalContext.current
+val launcher = rememberLauncherForActivityResult(
+    contract = ActivityResultContracts.StartActivityForResult(),
+    onResult = { result -> 
+        // Handle the result from the launched activity
+    }
+)
+    // Use AsyncImage for loading images asynchronously
+    val imageUrl = notification.thumbnail?.let { Uri.parse(it).toString() }
+
+
+    Row( 
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 25.dp,bottom = 8.dp, top = 8.dp)
+    ) {
+    
+            // AsyncImage will handle loading the image
+        imageUrl?.let {
+            AsyncImage(
+                model = it,
+                contentDescription = "Thumbnail",
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(40.dp)),
+                    contentScale = ContentScale.Crop,
+                placeholder = painterResource(id = R.drawable.ic_boxwithheart), // Placeholder image
+                error = painterResource(id = R.drawable.ic_donationpackage) // Error image in case of failure
+            )
+        }
+        
+        
+        Spacer(modifier = Modifier.width(10.dp))
+     
+        Text(
+            text = notification.title,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF8070F6),
+            fontSize = 18.sp
+        )
+        
+        }
+        
+  }
+        
 
 @Composable
 fun NotificationItem(notification: ClaimNotification) {
@@ -348,7 +460,7 @@ val launcher = rememberLauncherForActivityResult(
                 model = it,
                 contentDescription = "Thumbnail",
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(60.dp)
                     .clip(RoundedCornerShape(40.dp)),
                     contentScale = ContentScale.Crop,
                 placeholder = painterResource(id = R.drawable.ic_boxwithheart), // Placeholder image
@@ -366,20 +478,34 @@ val launcher = rememberLauncherForActivityResult(
             text = notification.title,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF8070F6),
-            fontSize = 18.sp
+            fontSize = 16.sp
         )
+        
+        
         
     Row( 
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 8.dp,top = 6.dp)
+            .padding(start = 4.dp,top = 6.dp)
     ) {
     
-    Box(
+    if(notification.deliverymethod == "Pick-Up"){
+    
+        Text(
+            text = "Recipient Coming to pickup the package at your address",
+            fontWeight = FontWeight.Normal,
+            color = Color.Black,
+            fontSize = 11.sp
+        )
+        
+        }else if (notification.deliverymethod == "Self Delivery"){
+        Box(
     modifier = Modifier
         .height(30.dp)
         .background(color = Color(0xFF8070F6), shape = RoundedCornerShape(25.dp))
-        .clickable { }
+        .clickable { 
+        
+        }
         .wrapContentWidth(),  
     contentAlignment = Alignment.Center // Centers the content inside the Box
 ) {
@@ -392,27 +518,38 @@ val launcher = rememberLauncherForActivityResult(
     )
 }
 
-Spacer(modifier = Modifier.width(8.dp))
+        }else if (notification.deliverymethod == "GivnGo Rider"){
+        Spacer(modifier = Modifier.width(8.dp))
 
 Box(
     modifier = Modifier
         .height(30.dp)
         .padding(start = 6.dp)
         .background(color = Color(0xFF8070F6), shape = RoundedCornerShape(25.dp))
-        .clickable {   val intent = Intent(context, AssignRider::class.java)
-            launcher.launch(intent)
+        .clickable {   
+        val intent = Intent(context, assignRider::class.java).apply {
+                            putExtra("donationTitle", notification.documentId)
+                            putExtra("donationDescription", notification.body)
+                            putExtra("donThumb", notification.thumbnail)
+                            putExtra("recEmail", notification.recipientEmail)
+                        }
+                        context.startActivity(intent)
             }
         .wrapContentWidth(),
     contentAlignment = Alignment.Center // Centers the content inside the Box
 ) {
     Text(
-        text = "Assign Volunteer",
+        text = "Assign Rider",
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(top = 6.dp, end = 12.dp, start = 12.dp, bottom = 6.dp),
         color = Color.White,
         fontSize = 11.sp
     )
 }
+        }
+        
+    
+
 
             
     }

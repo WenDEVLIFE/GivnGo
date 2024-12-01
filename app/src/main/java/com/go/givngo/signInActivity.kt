@@ -142,7 +142,7 @@ import androidx.compose.ui.window.Dialog
 import android.util.Log
 import com.go.givngo.SharedPreferences
 import com.google.firebase.firestore.DocumentSnapshot // Make sure to import this
-
+import com.google.firebase.messaging.FirebaseMessaging
  class signInActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -239,18 +239,153 @@ fun signInDonorRecipientRider() {
 
 // Function to handle Firestore authentication
     fun signInWithFirestore(email: String, password: String) {
-        val db = FirebaseFirestore.getInstance()
-        val accountTypes = listOf("Recipient", "Donor", "Riders")
-        val accountsRef = db.collection("GivnGoAccounts")
-        
-        var accountFound = false
-        errorMessage = "" // Clear any previous error message
+    val db = FirebaseFirestore.getInstance()
+    val accountTypes = listOf("Recipient", "Donor", "Rider")
+    val accountsRef = db.collection("GivnGoAccounts")
 
-        // First check in BasicAccounts
+    var accountFound = false
+    errorMessage = "" // Clear any previous error message
+
+    // First check in BasicAccounts
+    accountTypes.forEach { type ->
+        if (accountFound) return@forEach // Exit loop if account is found
+
+        accountsRef.document("BasicAccounts").collection(type)
+            .document(email)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    accountFound = true
+                    val storedPassword = document.getString("passwordAccount") ?: ""
+
+                    if (storedPassword == password) {
+                        // Get the FCM token
+                        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                            if (!task.isSuccessful) {
+                                Log.w("FCM", "Fetching FCM registration token failed", task.exception)
+                                return@addOnCompleteListener
+                            }
+                            val fcmToken = task.result
+
+                            // Update FCM token in Firestore for this user
+                            
+
+                            val accountType = document.getString("Account_type") ?: ""
+                            val statusAccount = document.getString("Status_account") ?: ""
+
+                            when (accountType) {
+                                "Donor" -> {
+                                    val orgName = document.getString("OrganizationName") ?: ""
+                                    val emailAccount = document.getString("email") ?: ""
+                                    val userProfileImage = document.getString("profileImage") ?: ""
+                                    
+                                    // Save data to SharedPreferences
+                                    SharedPreferences.saveEmail(context, emailAccount)
+                                    SharedPreferences.saveStatus(context, accountType)
+                                    SharedPreferences.saveOrgName(context, orgName)
+                                    SharedPreferences.saveBasicType(context, statusAccount)
+                                    SharedPreferences.saveProfileImageUri(context, userProfileImage)
+                                    
+                                    val address= document.getString("address") ?: ""
+                                    SharedPreferences.saveAdd(context, address)
+                                    
+                                    // Redirect to MainActivity
+                                    
+                                    
+                                    accountsRef.document("BasicAccounts")
+                                .collection("Donor")
+                                .document(email)
+                                .update("fcmToken", fcmToken)
+                                .addOnSuccessListener {
+                                    Log.d("FCM", "FCM token updated successfully")
+                                    
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.w("FCM", "Error updating FCM token", e)
+                                }
+                                
+                                }
+                                "Recipient" -> {
+                                    val firstName = document.getString("Recipient First Name") ?: ""
+                                    val lastName = document.getString("Recipient Last Name") ?: ""
+                                    val emailAccount = document.getString("email") ?: ""
+                                    val userProfileImage = document.getString("profileImage") ?: ""
+
+                                    SharedPreferences.saveEmail(context, emailAccount)
+                                    SharedPreferences.saveStatus(context, accountType)
+                                    SharedPreferences.saveFirstName(context, firstName)
+                                    SharedPreferences.saveLastName(context, lastName)
+                                    SharedPreferences.saveBasicType(context, statusAccount)
+                                    SharedPreferences.saveProfileImageUri(context, userProfileImage)
+                                    
+                                    val address= document.getString("address") ?: ""
+                                    SharedPreferences.saveAdd(context, address)
+                                    
+                                    accountsRef.document("BasicAccounts")
+                                .collection("Recipient")
+                                .document(email)
+                                .update("fcmToken", fcmToken)
+                                .addOnSuccessListener {
+                                    Log.d("FCM", "FCM token updated successfully")
+                                    
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.w("FCM", "Error updating FCM token", e)
+                                }
+                                }
+                                "Rider" -> {
+                                    val firstName = document.getString("Rider First Name") ?: ""
+                                    val lastName = document.getString("Rider Last Name") ?: ""
+                                    val emailAccount = document.getString("email") ?: ""
+                                    val userProfileImage = document.getString("profileImage") ?: ""
+
+                                    SharedPreferences.saveEmail(context, emailAccount)
+                                    SharedPreferences.saveStatus(context, accountType)
+                                    SharedPreferences.saveFirstName(context, firstName)
+                                    SharedPreferences.saveLastName(context, lastName)
+                                    SharedPreferences.saveBasicType(context, statusAccount)
+                                    SharedPreferences.saveProfileImageUri(context, userProfileImage)
+                                    
+                                    val address= document.getString("address") ?: ""
+                                    SharedPreferences.saveAdd(context, address)
+                                    
+                                   accountsRef.document("BasicAccounts")
+                                .collection("Rider")
+                                .document(email)
+                                .update("fcmToken", fcmToken)
+                                .addOnSuccessListener {
+                                    Log.d("FCM", "FCM token updated successfully")
+                                    
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.w("FCM", "Error updating FCM token", e)
+                                }
+                                }
+                            }
+                        }
+
+                    } else {
+                        errorMessage = "Wrong password"
+                    }
+                }
+            }
+            .addOnFailureListener {
+                errorMessage = "Error checking account, please check your email or password"
+            }
+    }
+
+    // If no account found in BasicAccounts, then check VerifiedAccounts
+    if (!accountFound) {
         accountTypes.forEach { type ->
             if (accountFound) return@forEach // Exit loop if account is found
 
-            accountsRef.document("BasicAccounts").collection(type)
+            accountsRef.document("VerifiedAccounts").collection(type)
                 .document(email)
                 .get()
                 .addOnSuccessListener { document ->
@@ -259,70 +394,104 @@ fun signInDonorRecipientRider() {
                         val storedPassword = document.getString("passwordAccount") ?: ""
 
                         if (storedPassword == password) {
-                            
-                            val accountType = document.getString("Account_type") ?: ""
-        val statusAccount = document.getString("Status_account") ?: ""
+                            // Get the FCM token
+                            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                                if (!task.isSuccessful) {
+                                    Log.w("FCM", "Fetching FCM registration token failed", task.exception)
+                                    return@addOnCompleteListener
+                                }
+                                val fcmToken = task.result
+
+                                
+
+                                val accountType = document.getString("Account_type") ?: ""
+                                val statusAccount = document.getString("Status_account") ?: ""
 
                                 when (accountType) {
-            "Donor" -> {
-                val orgName = document.getString("OrganizationName") ?: ""
-                val emailAccount = document.getString("email") ?: ""
-                val userProfileImage = document.getString("profileImage") ?: ""
-                
-                val address = document.getString("address") ?: ""
-                
-                
-                // Save data to SharedPreferences
-                SharedPreferences.saveEmail(context, emailAccount)
-                SharedPreferences.saveStatus(context, accountType)
-                SharedPreferences.saveOrgName(context, orgName)
-                SharedPreferences.saveBasicType(context, statusAccount)
-                SharedPreferences.saveProfileImageUri(context, userProfileImage)
-                                        // Redirect to MainActivity
-        val intent = Intent(context, MainActivity::class.java)
-        context.startActivity(intent)
-            }
-            "Recipient" -> {
-                val firstName = document.getString("Recipient First Name") ?: ""
-                val lastName = document.getString("Recipient Last Name") ?: ""
-                val emailAccount = document.getString("email") ?: ""
-                val userProfileImage = document.getString("Recipient Profile Image") ?: ""
-                
-                val address = document.getString("address") ?: ""
-                SharedPreferences.saveAdd(context, address)
-                
-                SharedPreferences.saveEmail(context, emailAccount)
-                SharedPreferences.saveStatus(context, accountType)
-                SharedPreferences.saveFirstName(context, firstName)
-                SharedPreferences.saveLastName(context, lastName)
-                SharedPreferences.saveBasicType(context, statusAccount)
-                SharedPreferences.saveProfileImageUri(context, userProfileImage)
-                                        // Redirect to MainActivity
-        val intent = Intent(context, MainActivity::class.java)
-        context.startActivity(intent)
-            }
-            "Rider" -> {
-                val firstName = document.getString("Volunteer First Name") ?: ""
-                val lastName = document.getString("Volunteer Last Name") ?: ""
-                val emailAccount = document.getString("email") ?: ""
-                val userProfileImage = document.getString("Volunteer Profile Image") ?: ""
-                
-                val address = document.getString("address") ?: ""
-                SharedPreferences.saveAdd(context, address)
-                
-                SharedPreferences.saveEmail(context, emailAccount)
-                SharedPreferences.saveStatus(context, accountType)
-                SharedPreferences.saveFirstName(context, firstName)
-                SharedPreferences.saveLastName(context, lastName)
-                SharedPreferences.saveBasicType(context, statusAccount)
-                SharedPreferences.saveProfileImageUri(context, userProfileImage)
-                
-                        // Redirect to MainActivity
-        val intent = Intent(context, MainActivity::class.java)
-        context.startActivity(intent)
-            }
-        }
+                                    "Donor" -> {
+                                        val orgName = document.getString("OrganizationName") ?: ""
+                                        val emailAccount = document.getString("email") ?: ""
+                                        val userProfileImage = document.getString("profileImage") ?: ""
 
+                                        // Save data to SharedPreferences
+                                        SharedPreferences.saveEmail(context, emailAccount)
+                                        SharedPreferences.saveStatus(context, accountType)
+                                        SharedPreferences.saveOrgName(context, orgName)
+                                        SharedPreferences.saveBasicType(context, statusAccount)
+                                        SharedPreferences.saveProfileImageUri(context, userProfileImage)
+
+                                                                            accountsRef.document("VerifiedAccounts")
+                                .collection("Donor")
+                                .document(email)
+                                .update("fcmToken", fcmToken)
+                                .addOnSuccessListener {
+                                    Log.d("FCM", "FCM token updated successfully")
+                                    
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.w("FCM", "Error updating FCM token", e)
+                                }
+                                
+                                
+                                    }
+                                    "Recipient" -> {
+                                        val firstName = document.getString("Recipient First Name") ?: ""
+                                        val lastName = document.getString("Recipient Last Name") ?: ""
+                                        val emailAccount = document.getString("email") ?: ""
+                                        val userProfileImage = document.getString("profileImage") ?: ""
+
+                                        SharedPreferences.saveEmail(context, emailAccount)
+                                        SharedPreferences.saveStatus(context, accountType)
+                                        SharedPreferences.saveFirstName(context, firstName)
+                                        SharedPreferences.saveLastName(context, lastName)
+                                        SharedPreferences.saveBasicType(context, statusAccount)
+                                        SharedPreferences.saveProfileImageUri(context, userProfileImage)
+
+                                        accountsRef.document("VerifiedAccounts")
+                                .collection("Recipient")
+                                .document(email)
+                                .update("fcmToken", fcmToken)
+                                .addOnSuccessListener {
+                                    Log.d("FCM", "FCM token updated successfully")
+                                    
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.w("FCM", "Error updating FCM token", e)
+                                }
+                                    }
+                                     "Rider" -> {
+                                    val firstName = document.getString("Rider First Name") ?: ""
+                                    val lastName = document.getString("Rider Last Name") ?: ""
+                                    val emailAccount = document.getString("email") ?: ""
+                                    val userProfileImage = document.getString("profileImage") ?: ""
+
+                                    SharedPreferences.saveEmail(context, emailAccount)
+                                    SharedPreferences.saveStatus(context, accountType)
+                                    SharedPreferences.saveFirstName(context, firstName)
+                                    SharedPreferences.saveLastName(context, lastName)
+                                    SharedPreferences.saveBasicType(context, statusAccount)
+                                    SharedPreferences.saveProfileImageUri(context, userProfileImage)
+
+                                   accountsRef.document("VerifiedAccounts")
+                                .collection("Rider")
+                                .document(email)
+                                .update("fcmToken", fcmToken)
+                                .addOnSuccessListener {
+                                    Log.d("FCM", "FCM token updated successfully")
+                                    
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.w("FCM", "Error updating FCM token", e)
+                                }
+                                }
+                                }
+                            }
 
                         } else {
                             errorMessage = "Wrong password"
@@ -333,92 +502,14 @@ fun signInDonorRecipientRider() {
                     errorMessage = "Error checking account, please check your email or password"
                 }
         }
-
-        // If no account found in BasicAccounts, then check VerifiedAccounts
-        if (!accountFound) {
-            accountTypes.forEach { type ->
-                if (accountFound) return@forEach // Exit loop if account is found
-
-                accountsRef.document("VerifiedAccounts").collection(type)
-                    .document(email)
-                    .get()
-                    .addOnSuccessListener { document ->
-                        if (document.exists()) {
-                            accountFound = true
-                            val storedPassword = document.getString("passwordAccount") ?: ""
-
-                            if (storedPassword == password) {
-                            val accountType = document.getString("Account_type") ?: ""
-        val statusAccount = document.getString("Status_account") ?: ""
-
-                                when (accountType) {
-            "Donor" -> {
-                val orgName = document.getString("OrganizationName") ?: ""
-                val emailAccount = document.getString("OrganizationName") ?: ""
-                val userProfileImage = document.getString("profileImage") ?: ""
-
-                // Save data to SharedPreferences
-                SharedPreferences.saveEmail(context, emailAccount)
-                SharedPreferences.saveStatus(context, accountType)
-                SharedPreferences.saveOrgName(context, orgName)
-                SharedPreferences.saveBasicType(context, statusAccount)
-                SharedPreferences.saveProfileImageUri(context, userProfileImage)
-                                        // Redirect to MainActivity
-        val intent = Intent(context, MainActivity::class.java)
-        context.startActivity(intent)
-            }
-            "Recipient" -> {
-                val firstName = document.getString("Recipient First Name") ?: ""
-                val lastName = document.getString("Recipient Last Name") ?: ""
-                val emailAccount = document.getString("email") ?: ""
-                val userProfileImage = document.getString("profileImage") ?: ""
-
-                SharedPreferences.saveEmail(context, emailAccount)
-                SharedPreferences.saveStatus(context, accountType)
-                SharedPreferences.saveFirstName(context, firstName)
-                SharedPreferences.saveLastName(context, lastName)
-                SharedPreferences.saveBasicType(context, statusAccount)
-                SharedPreferences.saveProfileImageUri(context, userProfileImage)
-                                        // Redirect to MainActivity
-        val intent = Intent(context, MainActivity::class.java)
-        context.startActivity(intent)
-            }
-            "Rider" -> {
-                val firstName = document.getString("Volunteer First Name") ?: ""
-                val lastName = document.getString("Volunteer Last Name") ?: ""
-                val emailAccount = document.getString("email") ?: ""
-                val userProfileImage = document.getString("Volunteer Profile Image") ?: ""
-
-                SharedPreferences.saveEmail(context, emailAccount)
-                SharedPreferences.saveStatus(context, accountType)
-                SharedPreferences.saveFirstName(context, firstName)
-                SharedPreferences.saveLastName(context, lastName)
-                SharedPreferences.saveBasicType(context, statusAccount)
-                SharedPreferences.saveProfileImageUri(context, userProfileImage)
-                
-                        // Redirect to MainActivity
-        val intent = Intent(context, MainActivity::class.java)
-        context.startActivity(intent)
-            }
-        }
-
-
-                            } else {
-                                errorMessage = "Wrong password"
-                            }
-                        }
-                    }
-                    .addOnFailureListener {
-                        errorMessage = "Error checking account, please check your email or password"
-                    }
-            }
-        }
-
-        // Check if no account was found after all checks
-        if (!accountFound) {
-            errorMessage = "Account does not exist"
-        }
     }
+
+    // Check if no account was found after all checks
+    if (!accountFound) {
+        errorMessage = "Account does not exist"
+    }
+}
+
 
 
     Column(

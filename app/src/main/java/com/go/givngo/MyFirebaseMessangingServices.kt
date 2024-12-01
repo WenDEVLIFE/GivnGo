@@ -27,8 +27,7 @@ import androidx.navigation.compose.composable
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
-private lateinit var wakeLock: PowerManager.WakeLock
-
+    private lateinit var wakeLock: PowerManager.WakeLock
     
     private fun sendNotification(title: String, body: String) {
         val intent = Intent(this, MyNotifications::class.java).apply {
@@ -59,22 +58,22 @@ private lateinit var wakeLock: PowerManager.WakeLock
     }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-    val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-    wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyApp::WakeLock")
-    wakeLock.acquire(10*60*1000L /*10 minutes*/) // Keep CPU awake for 10 minutes
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyApp::WakeLock")
+        wakeLock.acquire(10 * 60 * 1000L /*10 minutes*/) // Keep CPU awake for 10 minutes
 
-    // Process your message here
+        // Process your message here
+        val title = remoteMessage.data["title"] ?: remoteMessage.notification?.title
+        val body = remoteMessage.data["body"] ?: remoteMessage.notification?.body
+        val email = remoteMessage.data["email"] ?: return
 
-    val title = remoteMessage.data["title"] ?: remoteMessage.notification?.title
-    val body = remoteMessage.data["body"] ?: remoteMessage.notification?.body
-    val email = remoteMessage.data["email"] ?: return
+        if (title != null && body != null) {
+            sendNotification(title, body)
+        }
 
-    if (title != null && body != null) {
-        sendNotification(title, body)
-    }
-    
         // Release the wake lock after task is done
-    wakeLock.release()
-}
+        wakeLock.release()
+    }
 
+    
 }

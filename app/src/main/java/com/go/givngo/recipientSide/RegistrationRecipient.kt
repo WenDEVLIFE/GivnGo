@@ -128,6 +128,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageException
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
+import androidx.activity.compose.BackHandler
 
 
 import kotlinx.coroutines.tasks.await
@@ -135,7 +136,7 @@ import kotlinx.coroutines.CoroutineScope
 
 import com.google.android.gms.tasks.Task
 import com.google.firebase.firestore.DocumentSnapshot
-
+import com.google.firebase.messaging.FirebaseMessaging
  class RegistrationRecipient : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -169,6 +170,8 @@ fun MyAppRegistration() {
    var userComNumberCountryCode: String by remember { mutableStateOf("+63") }
 var userComNumber: String by remember { mutableStateOf("") }
 var firebaseUserCompanyContactNumber by remember { mutableStateOf("") }
+var currentStep by remember { mutableStateOf(1) }
+
 
 LaunchedEffect(userComNumber) {
     firebaseUserCompanyContactNumber = userComNumberCountryCode + userComNumber
@@ -180,15 +183,23 @@ LaunchedEffect(userComNumber) {
     var firebaseUserCompanyPassword: String by remember { mutableStateOf("") }
     var firebaseUserConfirmPassword: String by remember { mutableStateOf("") }
 
-    val context = LocalContext.current
-    val activity = (context as RegistrationRecipient)
 
+    // Validation state for each step
     var isNextEnabled by remember { mutableStateOf(false) } // Step 1
     var isNextEnabledTwo by remember { mutableStateOf(false) } // Step 2
     var isNextEnabledThree by remember { mutableStateOf(false) } // Step 3
-    var currentStep by remember { mutableStateOf(1) }
+val context = LocalContext.current
+val activity = (context as RegistrationRecipient)
 
-    SideEffect {
+    BackHandler {
+      if (currentStep > 1) {
+        currentStep--
+    } else {
+        activity.finish() // Safely call finish() on the activity
+    }
+}
+
+SideEffect {
         WindowCompat.setDecorFitsSystemWindows(activity.window, false)
         activity.window.statusBarColor = Color.Transparent.toArgb()
         WindowCompat.getInsetsController(activity.window, activity.window.decorView)
@@ -198,7 +209,8 @@ LaunchedEffect(userComNumber) {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Background images and setup...
+    
+            // Background images and setup...
         Image(
             painter = painterResource(id = R.drawable.gradient_two),
             contentDescription = null,
@@ -216,6 +228,7 @@ LaunchedEffect(userComNumber) {
                 .background(Color.Transparent),
             contentScale = ContentScale.Crop
         )
+        
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -223,7 +236,6 @@ LaunchedEffect(userComNumber) {
                 .align(Alignment.BottomCenter)
                 .background(Color.White)
         )
-
         Scaffold(
             scaffoldState = scaffoldState,
             backgroundColor = Color.Transparent,
@@ -238,21 +250,19 @@ LaunchedEffect(userComNumber) {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                AnimatedContent(
-                    targetState = currentStep,
-                    transitionSpec = {
-                        slideInHorizontally(
-                            initialOffsetX = { fullWidth -> if (targetState > initialState) fullWidth else -fullWidth }
-                        ) + fadeIn() with
-                                slideOutHorizontally(
-                                    targetOffsetX = { fullWidth -> if (targetState > initialState) -fullWidth else fullWidth }
-                                ) + fadeOut()
-                    },
-                    modifier = Modifier.fillMaxSize()
-                ) { targetStep ->
-                    when (targetStep) {
-                        1 -> {
-                            registrationStepOne(
+                    // Animated content
+                    AnimatedContent(
+                        targetState = currentStep,
+                        transitionSpec = {
+                            slideInHorizontally { fullWidth -> if (targetState > initialState) fullWidth else -fullWidth } + fadeIn() with
+                                    slideOutHorizontally { fullWidth -> if (targetState > initialState) -fullWidth else fullWidth } + fadeOut()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                    ) { targetStep ->
+                        when (targetStep) {
+                            1 -> {
+                                registrationStepOne(
                                 imageUri = firebasedatabaseProfilePicture,
                                 bioText = firebaseUserBio
                             ) { imageUri, bioText, isPhotoUploaded, isBioEntered ->
@@ -261,9 +271,9 @@ LaunchedEffect(userComNumber) {
                                 isNextEnabled = isPhotoUploaded && isBioEntered
                                 isNextEnabledTwo = false // Disable for next step
                             }
-                        }
-                        2 -> {
-                            registrationStepTwo(
+                            }
+                            2 -> {
+                                registrationStepTwo(
                                 firebaseUserFirstName,
                                 firebaseUserLastName,
                                 firebaseUserCompanyAddress,
@@ -278,9 +288,9 @@ LaunchedEffect(userComNumber) {
                                 isNextEnabledTwo = userCheckFName && userCheckLName && userAddressCheck && userOrgNumber 
                                 isNextEnabled = false // Disable for first step
                             }
-                        }
-                        3 -> {
-                            registrationStepThree(
+                            }
+                            3 -> {
+                                registrationStepThree(
                                 firebaseUserCompanyEmailAddress,
                                 firebaseUserCompanyPassword
                             ) { userEmail, userPassword, userConfirmPass, userCheckEmail, userCheckPassword, userCheckConfirmPass ->
@@ -290,14 +300,14 @@ LaunchedEffect(userComNumber) {
                                 isNextEnabledThree = userCheckEmail && userCheckConfirmPass
                                 isNextEnabledTwo = false // Disable for second step
                             }
+                            }
                         }
                     }
-                }
-
-                registrationNavigationButton(
+                    
+                    registrationNavigationButton(
                 firebasedatabaseProfilePicture, firebaseUserBio, firebaseUserFirstName, firebaseUserLastName, firebaseUserCompanyAddress, firebaseUserCompanyEmailAddress, firebaseUserCompanyContactNumber, firebaseUserCompanyPassword,
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
+                                                .align(Alignment.BottomCenter)
                         .padding(bottom = 48.dp),
                     isNextEnabled = when (currentStep) {
                         1 -> isNextEnabled
@@ -324,8 +334,6 @@ LaunchedEffect(userComNumber) {
         }
     }
 }
-
-
 
 @Composable
 fun registrationStepTwo(
@@ -640,6 +648,12 @@ val donorData = hashMapOf<String, Any?>()
 // Retrieve profile image URI
 val profileImageStorage = saveImageAndRetrieveUri(firebaseOrgEmail, firebaseOrgProfileImage)
 
+FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+        if (!task.isSuccessful) {
+            Log.w("FCM", "Fetching FCM registration token failed", task.exception)
+            return@addOnCompleteListener
+        }
+        val token = task.result
 // Populate donorData with key-value pairs
 donorData["profileImage"] = profileImageStorage.toString()
 donorData["bio"] = firebaseOrgBio
@@ -649,9 +663,12 @@ donorData["Status_account"] = userStatus
 donorData["Account_type"] = statusType
 donorData["address"] = firebaseOrgAddress
 donorData["email"] = firebaseOrgEmail
+donorData["fcmToken"] = token
 donorData["fullContact"] = firebaseOrgFullContact
 donorData["passwordAccount"] = firebaseOrgPasswordAccount
-
+donorData["recipient_claim_limits"] = 3L
+donorData["recipient_claim_status"] = 0L
+}
 
                             
                             val checkEmailExistence: (String) -> Task<DocumentSnapshot> = { collection ->
@@ -1068,12 +1085,10 @@ fun TopAppBar() {
             .fillMaxWidth()
             .padding(top = 35.dp)
             .background(color = Color.Transparent),
-        horizontalArrangement = Arrangement.Start,
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         
-        Spacer(modifier = Modifier.width(60.dp))
-
         Text(
             text = "Create account as a Recipient",
             color = Color.White,

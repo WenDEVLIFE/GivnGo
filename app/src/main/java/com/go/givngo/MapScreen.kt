@@ -7,28 +7,24 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.go.givngo.Model.MapViewModel
+import com.go.givngo.TrackingMap
 import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.maps.MapboxMap
+import androidx.compose.ui.unit.dp
+import com.mapbox.geojson.Point
 
 @Composable
 fun Map(
@@ -38,6 +34,7 @@ fun Map(
     val context = LocalContext.current
     var mapReady by remember { mutableStateOf(false) }
     var permissionGranted by remember { mutableStateOf(false) }
+    val defaultAddress = "2089 Santiago St. Fortune 1 Hen T. De Leon Valenzuela City"
 
     // ViewModel
     val mapModel: MapViewModel = viewModel()
@@ -48,13 +45,11 @@ fun Map(
     ) { isGranted: Boolean ->
         permissionGranted = isGranted
         if (isGranted) {
-            Log.d("MapDebug", "Location permission granted.")
             mapModel.getUserLocation(context) { location ->
                 mapModel.userLocation.value = location
                 mapReady = true
             }
         } else {
-            Log.d("MapDebug", "Location permission denied.")
             Toast.makeText(context, "Location permission denied", Toast.LENGTH_SHORT).show()
         }
     }
@@ -62,8 +57,6 @@ fun Map(
     // Check for location permission
     LaunchedEffect(Unit) {
         when {
-
-            // Check if permission is granted
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED -> {
                 permissionGranted = true
                 mapModel.getUserLocation(context) { location ->
@@ -71,8 +64,6 @@ fun Map(
                     mapReady = true
                 }
             }
-
-            // Request permission if not granted
             else -> {
                 permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
             }
@@ -82,44 +73,91 @@ fun Map(
     // MapView component
     val mapView = remember { MapView(context) }
 
+    // State for address search
+    var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
+    var mapboxMap by remember { mutableStateOf<MapboxMap?>(null) }
+    var isMapReady by remember { mutableStateOf(false) }
+
     // AndroidView to display the MapView
     AndroidView(
-        factory = {
-            mapView.apply {
-                onCreate(null)  // Required for lifecycle management
-            }
-        },
-        modifier = modifier.fillMaxSize(),
-
-        // Update the MapView
-        update = { mapView ->
-            mapView.getMapAsync { mapboxMap ->
-                Log.d("MapDebug", "MapboxMap is initialized")
-
-                mapboxMap.setStyle(
-                    "https://api.maptiler.com/maps/streets-v2/style.json?key=${BuildConfig.MAPTILER_API_KEY}"
-                ) { style ->
-                    Log.d("MapDebug", "Style loaded successfully.")
-
-                    if (permissionGranted) {
-                        mapModel.enableLocationComponent(mapboxMap, context)
-                    }
-
-                    mapModel.userLocation.value?.let { location ->
-                        val userLatLng = LatLng(location.latitude, location.longitude)
-                        // Add a marker or update map here if needed
-                        Log.d("MapDebug", "User location: $userLatLng")
-                    } ?: run {
-                        Log.d("MapDebug", "User location is null.")
-                    }
-                } ?: run {
-                    Log.d("MapDebug", "Failed to load style")
-                }
-
-                onMapReady(mapboxMap)
-            }
+    factory = {
+        try {
+            mapView.apply { onCreate(null) }
+        } catch (e: Exception) {
+            Log.e("MapDebug", "Error initializing MapView: ${e.message}", e)
+            throw e
         }
-    )
+    },
+    modifier = modifier.fillMaxSize(),
+    update = { mapView ->
+        try {
+            mapView.getMapAsync { mapbox ->
+                try {
+                    Log.d("MapDebug", "MapboxMap is initialized")
+                    isMapReady = true
+
+                    mapbox.setStyle(
+                        "https://api.maptiler.com/maps/streets-v2/style.json?key=${BuildConfig.MAPTILER_API_KEY}"
+                    ) { style ->
+                        try {
+                            if (permissionGranted) {
+                                mapModel.enableLocationComponent(mapbox, context)
+                            }
+                            
+                            mapModel.getUserLocation(context) { location ->
+                mapModel.userLocation.value = location
+                mapReady = true
+            }
+
+                            // Automatically search for the default address
+                            mapModel.searchAddressAndRoute(mapbox, context, defaultAddress) { targetLatLng ->
+                                try {
+                                    mapModel.userLocation.value?.let { location ->
+                                        val userLatLng = LatLng(location.latitude, location.longitude)
+
+                                        // Convert userLatLng to Point (Mapbox expects Point, not LatLng)
+                                        val userLocation = Point.fromLngLat(userLatLng.longitude, userLatLng.latitude)
+
+                                        // Convert targetLatLng to Point (same as above)
+                                        val targetLocation = Point.fromLngLat(targetLatLng.longitude, targetLatLng.latitude)
+
+                                        // Now, call drawRoute with userLocation and targetLocation as Points
+                                       mapModel.drawRoute(mapbox, userLatLng, targetLatLng, style, context)
+
+                                        // Toast message for loaded address
+                                        (context as? TrackingMap)?.runOnUiThread {
+                                            Toast.makeText(context, "Current address: $userLatLng", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "Target Location: $targetLatLng", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } ?: run {
+                                        (context as? TrackingMap)?.runOnUiThread {
+                                            Toast.makeText(context, "User location not available.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("MapDebug", "Error searching address or drawing route: ${e.message}", e)
+                                    (context as? TrackingMap)?.runOnUiThread {
+                                        Toast.makeText(context, "Error fetching route.", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("MapDebug", "Error setting style or enabling location: ${e.message}", e)
+                        }
+                    }
+
+                    mapboxMap = mapbox
+                    onMapReady(mapbox)
+                } catch (e: Exception) {
+                    Log.e("MapDebug", "Error initializing MapboxMap: ${e.message}", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MapDebug", "Error in MapView update block: ${e.message}", e)
+        }
+    }
+)
+
 
     // Lifecycle management
     DisposableEffect(Unit) {
@@ -136,6 +174,7 @@ fun Map(
         mapView.onSaveInstanceState(Bundle())
     }
 }
+
 @Composable
 fun MainMap(modifier: Modifier = Modifier) {
     val mapModel: MapViewModel = viewModel()
@@ -151,11 +190,9 @@ fun MainMap(modifier: Modifier = Modifier) {
         )
     }
 }
-@Composable
-fun MapScreen(navController: NavHostController) { // Corrected type annotation
-    val dialogState = remember { mutableStateOf(false) } // Initialize dialog state
-    val logoutState = remember { mutableStateOf(false) } // Initialize logout state
 
+@Composable
+fun MapScreen(navController: NavHostController) {
     Scaffold(
     ) { contentPadding ->
         Box(modifier = Modifier.padding(contentPadding)) {
@@ -163,18 +200,7 @@ fun MapScreen(navController: NavHostController) { // Corrected type annotation
             MainMap()
         }
     }
-
-    // This is for the dialog state to show the dialog
-    if (dialogState.value) {
-
-    }
-
-    // This is for the logout state
-    if (logoutState.value) {
-        logoutState.value = false // Reset the logout state
-    }
 }
-
 
 @Preview
 @Composable

@@ -42,9 +42,12 @@ import coil.compose.AsyncImage
 import com.go.givngo.Database.fetchImageUri
 import com.go.givngo.Extras.VoucherMarket
 import com.go.givngo.Model.DonorDetails
+import com.go.givngo.TrackingMap
+import com.go.givngo.ridersSide.PackageView
 import com.go.givngo.recipientSide.ClaimedDonations
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.go.givngo.subscriptionDialog
 
 @Composable
 fun AppDrawer(finishBasic: String,
@@ -69,7 +72,7 @@ fun AppDrawer(finishBasic: String,
             val collectionPath = when (statusUser) {
                 "Donor" -> "Donor"
                 "Recipient" -> "Recipient"
-                "Volunteer" -> "Volunteer"
+                "Rider" -> "Rider"
                 else -> return@LaunchedEffect // Exit if finishBasic is not recognized
             }
 
@@ -93,9 +96,9 @@ fun AppDrawer(finishBasic: String,
                                 statusAccount = document.getString("Status_account") ?: "",
                                 uriProfileImage = document.getString("profileImage") ?: ""
                             )
-                            "Volunteer" -> DonorDetails(
-                                firstName = document.getString("FirstName") ?: "",
-                                lastName = document.getString("LastName") ?: "",
+                            "Rider" -> DonorDetails(
+                                firstName = document.getString("Rider First Name") ?: "",
+                                lastName = document.getString("Rider Last Name") ?: "",
                                 statusAccount = document.getString("Status_account") ?: "",
                                 uriProfileImage = document.getString("profileImage") ?: ""
                             )
@@ -164,7 +167,7 @@ fun AppDrawer(finishBasic: String,
             ) {
 
                 when (statusUser) {
-                    "Donor", "Recipient", "Volunteer" -> {
+                    "Donor", "Recipient", "Rider" -> {
                         val profileImageUri = SharedPreferences.getProfileImageUri(context) ?: "Developer"
                         val profileImageUriParsed = Uri.parse(profileImageUri)
 
@@ -259,7 +262,7 @@ fun AppDrawer(finishBasic: String,
                                     color = Color.Gray
                                 )
                             }
-                            "Recipient", "Volunteer" -> {
+                            "Recipient", "Rider" -> {
                                 val recipientOrRiders = SharedPreferences.getFirstName(context) ?: "Developer"
                                 val basicType = SharedPreferences.getBasicType(context) ?: "Developer"
 
@@ -302,12 +305,26 @@ fun AppDrawer(finishBasic: String,
                 }
                 "Recipient" -> {
                     DrawerItem(
-                        text = "Claim Donation",
+                        text = "Subscription",
                         onClick = {
-                            val intent = Intent(context, ClaimedDonations::class.java)
+                            val intent = Intent(context, subscriptionDialog::class.java)
                             context.startActivity(intent)
                         }
                     )
+                }
+                "Developer" -> {
+                
+                            DrawerItem(
+    text = "My Notifications",
+    onClick = {
+        val intent = Intent(context, PackageView::class.java).apply {
+            putExtra("packageViewType", "InTransit")
+        }
+        context.startActivity(intent)
+    }
+)
+
+
                 }
             }
 
@@ -319,8 +336,8 @@ fun AppDrawer(finishBasic: String,
                     context.startActivity(intent)
                 }
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
 
             DrawerItem(text = "Settings",
                 onClick = {
@@ -354,7 +371,7 @@ fun AppDrawer(finishBasic: String,
                             SharedPreferences.clearFirstName(context)
                             SharedPreferences.clearProfileImageUri(context)
                         }
-                        "Volunteer" -> {
+                        "Rider" -> {
                             SharedPreferences.clearEmail(context)
                             SharedPreferences.clearBasicType(context)
                             SharedPreferences.clearHashPass(context)

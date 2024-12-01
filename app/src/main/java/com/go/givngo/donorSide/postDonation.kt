@@ -113,11 +113,11 @@ import android.util.Log
 import com.go.givngo.SharedPreferences
 
 import androidx.activity.compose.BackHandler
-
 import com.google.firebase.storage.FirebaseStorage
 
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.CoroutineScope
+import java.util.UUID
 
 class postDonation : ComponentActivity() {
 
@@ -505,6 +505,7 @@ fun MyApp() {
                 var selectedMonth by remember { mutableStateOf("mm") }
                 var selectedDay by remember { mutableStateOf("dd") }
                 var selectedCategory by remember { mutableStateOf<String?>(null) }
+                    var selectedDeliveryOption by remember { mutableStateOf<String?>(null) }
                 var imageUris by remember { mutableStateOf(listOf<Uri>()) }
 
                 Column(
@@ -557,6 +558,16 @@ fun MyApp() {
                         categoryDonationChooser("Stationery", selectedCategory) { selectedCategory = it }
                         categoryDonationChooser("Households items", selectedCategory) { selectedCategory = it }
                     }
+                    
+                    deliveryoptionHeadline()
+                    
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState())
+                    ) {
+                        deliveryCategoryOptionChooser("Pick-Up", selectedDeliveryOption) { selectedDeliveryOption = it }
+                        deliveryCategoryOptionChooser("Self Delivery", selectedDeliveryOption) { selectedDeliveryOption = it }
+                        deliveryCategoryOptionChooser("GivnGo Rider", selectedDeliveryOption) { selectedDeliveryOption = it }
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -580,6 +591,8 @@ fun MyApp() {
                     firebaseDonationPostTitle = donationTitlePost,
                     firebaseDonationPostDesc = donationDescription,
                     firebaseDonationCategory = selectedCategory,
+                    //Delivery Option
+                    firebaseDeliveryMethod= selectedDeliveryOption,
                     firebaseDonationQuantity = donationQuantity,
                     selectedYear = selectedYear,
                     selectedMonth = selectedMonth,
@@ -600,6 +613,7 @@ fun overlayShadowBottom(
     firebaseDonationPostTitle: String,
     firebaseDonationPostDesc: String,
     firebaseDonationCategory: String?,
+    firebaseDeliveryMethod: String?,
     firebaseDonationQuantity: String,
     selectedYear: String,
     selectedMonth: String,
@@ -608,6 +622,7 @@ fun overlayShadowBottom(
 ) {
 
     val context = LocalContext.current
+    val activity = (context as postDonation)
     val firestore = FirebaseFirestore.getInstance()
     var points by remember { mutableStateOf(0) }
 
@@ -625,6 +640,8 @@ fun overlayShadowBottom(
                     .padding(top = 8.dp, end = 16.dp, bottom = 8.dp)
                     .clickable {
                         coroutineScope.launch {
+                            val uuid = java.util.UUID.randomUUID()
+                            var postIdentification = "POST_POINTS-$uuid"
                             val statusType = "Donor"
                             val statusClaim = "Unclaimed"
                             val userCurrentSignedInEmail = SharedPreferences.getEmail(context) ?: "Developer@gmail.com"
@@ -641,11 +658,11 @@ fun overlayShadowBottom(
 
                             // Set points based on donation category
                             points = when (firebaseDonationCategory) {
-                                "Meals" -> 0
-                                "Clothings" -> 0
-                                "Furniture" -> 0
-                                "Books", "Stationery" -> 0
-                                "Household items" -> 0
+                                "Meals" -> 10
+                                "Clothings" -> 6
+                                "Furniture" -> 4
+                                "Books", "Stationery" -> 2
+                                "Household items" -> 8
                                 else -> 0
                             }
                             
@@ -654,12 +671,16 @@ fun overlayShadowBottom(
                              donorPostData = hashMapOf(
                                 "donation_post_title" to firebaseDonationPostTitle,
                                 "donation_post_description" to firebaseDonationPostDesc,
+                                 "donatioon_points_id" to postIdentification,
+                                 "donation_points_to_earn" to points,
                                 "donor_name" to userDonorName,
                                 "donor_email" to userCurrentSignedInEmail,
                                 "donation_images" to imageUrls,
                                 "donation_category" to (firebaseDonationCategory ?: "Meals"),
+                                "delivery_method" to (firebaseDeliveryMethod ?: "GivnGo Rider"),
                                 "donation_quantity" to firebaseDonationQuantity,
                                                                 "donation_points" to points,
+                                                                "claimed by - " to "",
                                 "donation_expiration_package" to firebaseDonationExpiration,
                                 "donation_claim_status" to statusClaim,
                                 "donation_timestamp" to FieldValue.serverTimestamp()
@@ -670,11 +691,14 @@ fun overlayShadowBottom(
                              donorPostData = hashMapOf(
                                 "donation_post_title" to firebaseDonationPostTitle,
                                 "donation_post_description" to firebaseDonationPostDesc,
+                                 "donatioon_points_id" to postIdentification,
+                                 "donation_points_to_earn" to points,
                                 "donor_name" to userDonorName,
                                 "donor_email" to userCurrentSignedInEmail,
                                 "donation_images" to imageUrls,
                                 "donation_category" to (firebaseDonationCategory ?: "Meals"),
                                 "donation_quantity" to firebaseDonationQuantity,
+                                                                "delivery_method" to (firebaseDeliveryMethod ?: "GivnGo Rider"),
                                                                 "donation_points" to points,
                                 "donation_expiration_package" to "None",
                                 "donation_claim_status" to statusClaim,
@@ -682,12 +706,15 @@ fun overlayShadowBottom(
                             )
 
                             }
-                            
+
+
                             
                             val donorPostDataWithPoints = hashMapOf(
                                 "donation_post_title" to firebaseDonationPostTitle,
+                                "donation_post_points_identification" to postIdentification,
                                 "donation_category" to (firebaseDonationCategory ?: "Meals"),
-                                "donation_points_to_claim" to points
+                                "donation_points_for_this_post" to points,
+                                "donation_points_to_claim" to 0
                             )
 
                             // Save to Firestore with points and show snackbar
@@ -701,7 +728,8 @@ fun overlayShadowBottom(
                                     .collection("MyPoints")
                                     .document("Post")
                                     .collection("Unclaimed_Points")
-                                    .add(donorPostDataWithPoints)
+                                    .document(postIdentification)
+                                    .set(donorPostDataWithPoints)
                                     .addOnSuccessListener {
                                      /*   coroutineScope.launch {
                                             scaffoldState.snackbarHostState.showSnackbar(
@@ -724,8 +752,7 @@ fun overlayShadowBottom(
                                                     .collection("Posts")
                                                     .add(donorPostData)
                                                     .addOnSuccessListener {
-                                                        val intent = Intent(context, MainActivity::class.java)
-                                                        context.startActivity(intent)
+                                                        activity.finish()
                                                     }
                                                     .addOnFailureListener { exception ->
                                                         coroutineScope.launch {
@@ -936,6 +963,23 @@ Column(horizontalAlignment = Alignment.CenterHorizontally) {
     
 }
 
+
+@Composable
+fun deliveryoptionHeadline(){
+
+Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "Choose Delivery Method:",
+            fontSize = 13.sp,
+            modifier = Modifier.padding(start = 8.dp),
+            color = Color(0xFF8070F6),
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+    }
+    
+}
+
 @Composable
 fun UploadPhotos(
     selectedImageUris: List<Uri>,
@@ -1114,5 +1158,70 @@ fun categoryDonationChooser(categoryType: String, selectedCategory: String?, onC
 }
 
 
+
+
+@Composable
+fun deliveryCategoryOptionChooser(categoryType: String, selectedCategory: String?, onCategorySelected: (String) -> Unit) {
+    val isButtonPressed = selectedCategory == categoryType
+
+    Box(
+        modifier = Modifier
+            .padding(4.dp)
+            .height(30.dp)
+            .wrapContentWidth()
+            .clickable {
+                onCategorySelected(categoryType) 
+            }
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                color = if (isButtonPressed) Color(0xFFD9C8F9) else Color(0xFFFBF8FF),
+                shape = RoundedCornerShape(20.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = categoryType,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 3.dp, bottom = 3.dp, start = 24.dp, end = 24.dp),
+                color = Color(0xFF8070F6),
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+
+    if (isButtonPressed) {
+        when (categoryType) {
+            "Electronics" -> {
+            /*    // Handle Electronics pressed action
+                Text(
+                    text = "You selected Electronics!",
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 8.dp)
+                ) */
+            }
+            "Meals" -> {
+              /*  // Handle Meals pressed action
+                Text(
+                    text = "You selected Meals!",
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 8.dp)
+                ) */
+            }
+            "Clothings" -> {
+             /*   // Handle Clothings pressed action
+                Text(
+                    text = "You selected Clothings!",
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 8.dp)
+                ) */
+            }
+        }
+    }
+}
 
 

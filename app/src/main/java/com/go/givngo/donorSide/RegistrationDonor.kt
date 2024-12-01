@@ -134,6 +134,9 @@ import kotlinx.coroutines.CoroutineScope
 
 import com.google.firebase.messaging.FirebaseMessaging
 
+import androidx.activity.compose.BackHandler
+
+
 class RegistrationDonor : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -162,6 +165,7 @@ fun MyAppRegistration() {
     var firebasedatabaseProfilePicture: Uri? by remember { mutableStateOf(null) }
     var firebaseUserBio: String by remember { mutableStateOf("") }
     var firebaseUserOrganizationName: String by remember { mutableStateOf("") }
+    var firebaseUserOrganizationType: String by remember { mutableStateOf("Business") }
     var firebaseUserCompanyAddress: String by remember { mutableStateOf("") }
      
     var userComNumberCountryCode: String by remember { mutableStateOf("+63") }
@@ -185,6 +189,14 @@ LaunchedEffect(userComNumber) {
     var isNextEnabledTwo by remember { mutableStateOf(false) } // Step 2
     var isNextEnabledThree by remember { mutableStateOf(false) } // Step 3
     var currentStep by remember { mutableStateOf(1) }
+
+    BackHandler {
+     if (currentStep > 1) {
+        currentStep--
+    } else {
+        activity.finish() // Safely call finish() on the activity
+    }
+}
 
     SideEffect {
         WindowCompat.setDecorFitsSystemWindows(activity.window, false)
@@ -263,11 +275,13 @@ LaunchedEffect(userComNumber) {
                         2 -> {
                             registrationStepTwo(
                                 firebaseUserOrganizationName,
+                                firebaseUserOrganizationType,
                                 firebaseUserCompanyAddress,
                                 userComNumber,
                                 userComNumberCountryCode
-                            ) { userOrgName, userAddress, userContact, userCountryCode, userOrgNameCheck, userAddressCheck, userOrgNumber, userOrgCountryCode ->
+                            ) { orgType, userOrgName, userAddress, userContact, userCountryCode, userOrgNameCheck, userAddressCheck, userOrgNumber, userOrgCountryCode ->
                                 firebaseUserOrganizationName = userOrgName
+                                firebaseUserOrganizationType = orgType
                                 firebaseUserCompanyAddress = userAddress
                                 userComNumber = userContact
                                 userComNumberCountryCode = userCountryCode
@@ -292,6 +306,7 @@ LaunchedEffect(userComNumber) {
 
                 registrationNavigationButton(
                 coroutineScope,
+                firebaseUserOrganizationType,
                 firebasedatabaseProfilePicture, firebaseUserBio, firebaseUserOrganizationName, firebaseUserCompanyAddress, firebaseUserCompanyEmailAddress, firebaseUserCompanyContactNumber, firebaseUserCompanyPassword,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -325,6 +340,7 @@ LaunchedEffect(userComNumber) {
 @Composable
 fun registrationNavigationButton(
 coroutineScope: CoroutineScope,
+firebaseOrgType: String,
     firebaseOrgProfileImage: Uri?,
     firebaseOrgBio: String,
     firebaseOrgName: String,
@@ -423,6 +439,7 @@ donorData["address"] = firebaseOrgAddress
 donorData["email"] = firebaseOrgEmail
 donorData["fcmToken"] = token
 donorData["fullContact"] = firebaseOrgFullContact
+donorData["Organization_Type"] = firebaseOrgType
 donorData["passwordAccount"] = firebaseOrgPasswordAccount
 
                             }
@@ -751,32 +768,34 @@ fun registrationStepThree(
 @Composable
 fun registrationStepTwo(
     orgName: String,
+    donorOrgType: String,
     comAddress: String,
     comNumber: String,
     comNumCountryCode: String,
-    onStateChange: (String, String, String, String, Boolean, Boolean, Boolean, Boolean) -> Unit
+    onStateChange: (String,String, String, String, String, Boolean, Boolean, Boolean, Boolean) -> Unit
 ) {
-val context = LocalContext.current
+    val context = LocalContext.current
     var organizationName by remember { mutableStateOf(orgName) }
     var companyAddress by remember { mutableStateOf(comAddress) }
     var countryCode by remember { mutableStateOf(comNumCountryCode) }
     var companyNumber by remember { mutableStateOf(comNumber) }
-
+    var selectedType by remember { mutableStateOf(donorOrgType) }  // Default selection
     var expanded by remember { mutableStateOf(false) }
+    var expandedTwo by remember { mutableStateOf(false) }
     var companyNumberInput by remember { mutableStateOf(companyNumber) }
-    
 
-                    onStateChange(
-            organizationName,
-            companyAddress,
-            companyNumberInput,  
-            countryCode,
-            organizationName.isNotEmpty(),
-            companyAddress.isNotEmpty(),
-            companyNumberInput.isNotEmpty(),
-            countryCode.isNotEmpty()
-        )
-                
+    // Trigger state change when any field is updated
+    onStateChange(
+    selectedType,
+        organizationName,
+        companyAddress,
+        companyNumberInput,
+        countryCode,
+        organizationName.isNotEmpty(),
+        companyAddress.isNotEmpty(),
+        companyNumberInput.isNotEmpty(),
+        countryCode.isNotEmpty()
+    )
 
     Column(
         modifier = Modifier
@@ -792,22 +811,64 @@ val context = LocalContext.current
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Dropdown for selecting type (Organization/Charity, Business, Self Proprietor)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 32.dp)
+                .clickable { expandedTwo = !expandedTwo }
+                .background(Color.Transparent)
+                .border(1.dp, Color.White, shape = RoundedCornerShape(4.dp))
+                .padding(vertical = 12.dp, horizontal = 8.dp)
+        ) {
+            Text(
+                text = selectedType,
+                color = Color.White,
+                fontSize = 15.sp,
+            )
+
+            DropdownMenu(
+                expanded = expandedTwo,
+                onDismissRequest = { expandedTwo = false }
+            ) {
+                listOf("Organization/Charity", "Business", "Self Proprietor").forEach { type ->
+                    DropdownMenuItem(onClick = {
+                        selectedType = type
+                        expandedTwo = false
+                    }) {
+                        Text(text = type)
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Change the label based on selected type
+        val label = when (selectedType) {
+            "Organization/Charity" -> "Organization/Charity Name"
+            "Self Proprietor" -> "Self Proprietor Name"
+            else -> "Business Name"
+        }
+
+        // Organization/Business Name input field
         OutlinedTextField(
             value = organizationName,
             onValueChange = {
                 organizationName = it
                 onStateChange(
-            organizationName,
-            companyAddress,
-            companyNumberInput,  
-            countryCode,
-            organizationName.isNotEmpty(),
-            companyAddress.isNotEmpty(),
-            companyNumberInput.isNotEmpty(),
-            countryCode.isNotEmpty()
-        )
+    selectedType,
+        organizationName,
+        companyAddress,
+        companyNumberInput,
+        countryCode,
+        organizationName.isNotEmpty(),
+        companyAddress.isNotEmpty(),
+        companyNumberInput.isNotEmpty(),
+        countryCode.isNotEmpty()
+    )
             },
-            label = { Text("Organization/Business Name") },
+            label = { Text(label) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(end = 32.dp),
@@ -829,15 +890,16 @@ val context = LocalContext.current
             onValueChange = {
                 companyAddress = it
                 onStateChange(
-            organizationName,
-            companyAddress,
-            companyNumberInput,  
-            countryCode,
-            organizationName.isNotEmpty(),
-            companyAddress.isNotEmpty(),
-            companyNumberInput.isNotEmpty(),
-            countryCode.isNotEmpty()
-        )
+    selectedType,
+        organizationName,
+        companyAddress,
+        companyNumberInput,
+        countryCode,
+        organizationName.isNotEmpty(),
+        companyAddress.isNotEmpty(),
+        companyNumberInput.isNotEmpty(),
+        countryCode.isNotEmpty()
+    )
             },
             label = { Text("Company Office Address") },
             modifier = Modifier
@@ -856,6 +918,7 @@ val context = LocalContext.current
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Country code and number input
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -892,44 +955,43 @@ val context = LocalContext.current
                 }
             }
 
-OutlinedTextField(
-    value = companyNumberInput,
-    onValueChange = { input ->
-        companyNumberInput = input  
+            OutlinedTextField(
+                value = companyNumberInput,
+                onValueChange = { input ->
+                    companyNumberInput = input  
 
-        onStateChange(
-            organizationName,
-            companyAddress,
-            companyNumberInput,  
-            countryCode,
-            organizationName.isNotEmpty(),
-            companyAddress.isNotEmpty(),
-            companyNumberInput.isNotEmpty(),
-            countryCode.isNotEmpty()
-        )
-
-        // Show Toast when companyNumberInput has a value
-        if (companyNumberInput.isNotEmpty()) {
-            Toast.makeText(context, "Company Number is: $companyNumberInput", Toast.LENGTH_SHORT).show()
-        } else {  // Handle case when input is cleared
-            Toast.makeText(context, "Contact number cleared", Toast.LENGTH_SHORT).show()
-        }
-    },
-    label = { Text("Contact Number") },
-    modifier = Modifier.weight(1f),
-    singleLine = true,
-    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-    colors = TextFieldDefaults.outlinedTextFieldColors(
-        textColor = Color.White,
-        focusedBorderColor = Color(0xFFF2F1FF),
-        unfocusedBorderColor = Color.Transparent,
-        cursorColor = Color(0xFF7967FF),
-        focusedLabelColor = Color.White,
-        unfocusedLabelColor = Color.White
+                    onStateChange(
+    selectedType,
+        organizationName,
+        companyAddress,
+        companyNumberInput,
+        countryCode,
+        organizationName.isNotEmpty(),
+        companyAddress.isNotEmpty(),
+        companyNumberInput.isNotEmpty(),
+        countryCode.isNotEmpty()
     )
-)
 
-
+                    // Show Toast when companyNumberInput has a value
+                    if (companyNumberInput.isNotEmpty()) {
+                        Toast.makeText(context, "Company Number is: $companyNumberInput", Toast.LENGTH_SHORT).show()
+                    } else {  // Handle case when input is cleared
+                        Toast.makeText(context, "Contact number cleared", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                label = { Text("Contact Number") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    textColor = Color.White,
+                    focusedBorderColor = Color(0xFFF2F1FF),
+                    unfocusedBorderColor = Color.Transparent,
+                    cursorColor = Color(0xFF7967FF),
+                    focusedLabelColor = Color.White,
+                    unfocusedLabelColor = Color.White
+                )
+            )
         }
 
         Spacer(modifier = Modifier.height(8.dp))

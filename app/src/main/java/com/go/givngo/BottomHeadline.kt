@@ -29,4 +29,21 @@ fun BottomHeadline() {
     }
 }
 
+@Composable
+fun BottomHeadlineRider() {
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "Begin your delivering journey!",
+            fontSize = 18.sp,
+            color = Color(0xFF8070F6),
+            modifier = Modifier
+                .padding(start = 25.dp),
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+
 

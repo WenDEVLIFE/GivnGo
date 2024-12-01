@@ -159,7 +159,19 @@ import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.with
+import androidx.compose.runtime.remember
 
+import com.android.billingclient.api.*
+
+import android.webkit.JavascriptInterface
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.compose.ui.viewinterop.AndroidView
 
  class subscriptionDialog : ComponentActivity() {
 
@@ -177,50 +189,402 @@ import com.android.volley.toolbox.Volley
     }
 }
 
-
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun MyAppSubscription() {
-    val pushDownOverscrollEffect = rememberPushDownOverscrollEffect()
-    val scrollState = rememberScrollState()
-
     val scaffoldState = rememberScaffoldState()
-    val coroutineScope = rememberCoroutineScope()
+    val currentStep = remember { mutableStateOf(0) }
+    val selectedSub = remember { mutableStateOf<String?>(null) }
 
-    val context = LocalContext.current
-    val activity = (context as subscriptionDialog)
-
-    SideEffect {
-        WindowCompat.setDecorFitsSystemWindows(activity.window, false)
-        activity.window.statusBarColor = Color.Transparent.toArgb()
-
-        WindowCompat.getInsetsController(activity.window, activity.window.decorView)
-            ?.isAppearanceLightStatusBars = true
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            scaffoldState = scaffoldState,
-            backgroundColor = Color.Transparent,
-            topBar = {
-                TopBarSubscription()
-            },
+    Scaffold(
+        scaffoldState = scaffoldState,
+        backgroundColor = Color.Transparent,
+        topBar = {
+            TopBarSubscription()
+        },
+        modifier = Modifier
+            .statusBarsPadding()
+            .navigationBarsPadding()
+    ) { innerPadding ->
+        Box(
             modifier = Modifier
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .background(color = Color.White)
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-          /*   subscriptionFill() */
-                
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+        
+        Image(
+            painter = painterResource(id = R.drawable.gradient_one),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Transparent),
+            contentScale = ContentScale.Crop
+        )
+            AnimatedContent(
+                targetState = currentStep.value,
+                transitionSpec = {
+                    slideInHorizontally(
+                        initialOffsetX = { fullWidth -> fullWidth }
+                    ) with slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> -fullWidth }
+                    )
+                }
+            ) { step ->
+                when (step) {
+                    0 -> subscriptionOptions(
+                        onNext = {
+                            selectedSub.value = it
+                            currentStep.value++
+                        }
+                    )
+                    1 -> subscriptionFillMock(selectedSubscription = selectedSub.value.orEmpty())
+                }
             }
         }
     }
 }
- 
+
+@Composable
+fun subscriptionOptions(onNext: (String) -> Unit) {
+    val selectedSubscription = remember { mutableStateOf<String?>(null) }
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 16.dp, start = 16.dp, end = 16.dp, top = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_premium),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(120.dp)
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "Break The Limit!",
+                color = Color(0xFF9070EF),
+                fontSize = 25.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Unlock higher claim limits by subscribing weekly, monthly, or yearly. Each subscription renews your claim allowance every week, ensuring you never miss out!",
+                color = Color(0xFF8070F6),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            FeatureSubscription(
+                "Yearly",
+                "features 10 claim limits per week",
+                "₱5,525/Yearly",
+                selectedSubscription
+            )
+
+            FeatureSubscription(
+                "Monthly",
+                "7 claim limits per week",
+                "₱450/Monthly",
+                selectedSubscription
+            )
+
+            FeatureSubscription(
+                "Weekly",
+                "5 claim limits per week",
+                "₱125/Weekly",
+                selectedSubscription
+            )
+
+            NextButton(
+                isEnabled = selectedSubscription.value != null,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(16.dp),
+                onClick = { onNext(selectedSubscription.value ?: "") }
+            )
+        }
+    }
+}
+
+class WebAppInterface(
+    private val context: Context,
+    private val onPurchaseCompleteCallback: (String) -> Unit
+) {
+
+    @JavascriptInterface
+    fun onPurchaseComplete(transactionId: String, status: String) {
+        // Update the UI or perform actions based on the completion
+        val message = when (status) {
+            "Yearly" -> "Yearly subscription purchased successfully! Transaction ID: $transactionId"
+            "Monthly" -> "Monthly subscription purchased successfully! Transaction ID: $transactionId"
+            "Weekly" -> "Weekly subscription purchased successfully! Transaction ID: $transactionId"
+            else -> "Unknown subscription status."
+        }
+        onPurchaseCompleteCallback(message)
+    }
+}
+
+@Composable
+fun subscriptionFillMock(selectedSubscription: String) {
+    var purchaseStatus by remember { mutableStateOf("Waiting for user action...") }
+    val context = LocalContext.current
+    val webView = remember { WebView(context) }
+    
+    val url = when (selectedSubscription) {
+                    "Yearly" -> "https://feedsbeta.vercel.app/client/subscription/yearly/checkout/"
+                    "Monthly" -> "https://feedsbeta.vercel.app/client/subscription/daily/checkout/"
+                    "Weekly" -> "https://feedsbeta.vercel.app/client/subscription/weekly/checkout/"
+                    else -> null
+                }
+
+                if (url != null) {
+                    purchaseStatus = "Opening checkout for $selectedSubscription..."
+                    webView.loadUrl(url)
+                } else {
+                    purchaseStatus = "No valid subscription selected."
+                }
+                
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF5F5F5)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Simulated Billing for $selectedSubscription",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = {
+                
+            }) {
+                Text(text = "Pay Purchase")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = purchaseStatus, color = Color.Gray)
+        }
+    }
+
+    // WebView integration
+    AndroidView(
+        factory = {
+            webView.apply {
+                settings.javaScriptEnabled = true
+                webViewClient = WebViewClient()
+                addJavascriptInterface(
+                    WebAppInterface(context) { message ->
+                        // Update purchaseStatus in the UI
+                        purchaseStatus = message
+                    },
+                    "AndroidInterface"
+                )
+            }
+        },
+        modifier = Modifier.fillMaxSize()
+    )
+}
+
+
+@Composable
+fun subscriptionFill(selectedSubscription: String) {
+    val context = LocalContext.current
+
+    // Trigger Google Play Billing
+    LaunchedEffect(Unit) {
+        val billingClient = BillingClient.newBuilder(context)
+            .setListener { billingResult, purchases ->
+                // Handle purchase results here
+            }
+            .enablePendingPurchases()
+            .build()
+
+        billingClient.startConnection(object : BillingClientStateListener {
+            override fun onBillingServiceDisconnected() {
+                // Handle disconnection
+            }
+
+            override fun onBillingSetupFinished(billingResult: BillingResult) {
+                if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                    // Fetch and launch the appropriate subscription
+                    val skuList = when (selectedSubscription) {
+                        "Yearly" -> listOf("yearly_subscription_id")
+                        "Monthly" -> listOf("monthly_subscription_id")
+                        "Weekly" -> listOf("weekly_subscription_id")
+                        else -> emptyList()
+                    }
+
+                    val params = SkuDetailsParams.newBuilder()
+                        .setSkusList(skuList)
+                        .setType(BillingClient.SkuType.SUBS)
+                        .build()
+
+                    billingClient.querySkuDetailsAsync(params) { result, skuDetailsList ->
+                        if (result.responseCode == BillingClient.BillingResponseCode.OK && skuDetailsList != null) {
+                            skuDetailsList.firstOrNull()?.let { skuDetails ->
+                                val flowParams = BillingFlowParams.newBuilder()
+                                    .setSkuDetails(skuDetails)
+                                    .build()
+                                billingClient.launchBillingFlow(context as subscriptionDialog, flowParams)
+                            }
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF5F5F5)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Launching Google Play Billing for $selectedSubscription",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+
+}
+
+
+
+
+@Composable
+fun FeatureSubscription(
+    featureTitle: String,
+    featureDesc: String,
+    featurePrice: String,
+    selectedSubscription: MutableState<String?>
+) {
+    val isChecked = selectedSubscription.value == featureTitle
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .padding(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 4.dp)
+            .clip(
+                RoundedCornerShape(
+                    topStart = 0.dp,
+                    topEnd = 0.dp,
+                    bottomStart = 24.dp,
+                    bottomEnd = 24.dp
+                )
+            )
+            .background(if (isChecked) Color(0xFF9070EF) else Color(0xFFDFD7FF))
+            .clickable {
+                selectedSubscription.value = if (isChecked) null else featureTitle
+            }
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .padding(top = 6.dp, bottom = 6.dp, start = 6.dp, end = 6.dp)
+                .clip(
+                    RoundedCornerShape(
+                        topStart = 0.dp,
+                        topEnd = 0.dp,
+                        bottomStart = 20.dp,
+                        bottomEnd = 20.dp
+                    )
+                )
+                .background(if (isChecked) Color(0xFFE5DDFF) else Color.White)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 8.dp, start = 4.dp, end = 12.dp)
+            ) {
+                // Checkbox
+                Checkbox(
+                    checked = isChecked,
+                    onCheckedChange = {
+                        selectedSubscription.value = if (isChecked) null else featureTitle
+                    },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = Color(0xFF8070F6),
+                        uncheckedColor = Color(0xFF8B6DEC)
+                    )
+                )
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
+                ) {
+                    Text(
+                        text = featureTitle,
+                        color = Color(0xFF453081),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = featureDesc,
+                        color = Color(0xFFA497CB),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Normal
+                    )
+                    Text(
+                        text = featurePrice,
+                        color = Color(0xFF453081),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NextButton(
+    isEnabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .height(45.dp)
+            .width(120.dp)
+            .clip(RoundedCornerShape(25.dp))
+            .background(
+                color = if (isEnabled) Color(0xFF9070EF) else Color(0xFFDFD7FF)
+            )
+            .clickable(enabled = isEnabled) {
+                // Transition to the next screen
+                onClick() 
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Next",
+            fontSize = 16.sp,
+            color = Color.White,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+
+
  /*
 @Composable
 fun subscriptionFill() {

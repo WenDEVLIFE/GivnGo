@@ -158,19 +158,22 @@ import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
+import com.go.givngo.donorSide.AssignRiderInfo
 
-
-class AssignRider : ComponentActivity() {
+class assignRider : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
     
         super.onCreate(savedInstanceState)
         
-        
+        val donationTitle = intent.getStringExtra("donationTitle") ?: "No Donation"
+        val donationDesc = intent.getStringExtra("donationDescription") ?: "No Description"
+        val donThumb = intent.getStringExtra("donThumb") ?: ""
+        val emailRec = intent.getStringExtra("recEmail") ?: ""
         
         setContent {
             MyComposeApplicationTheme {
-                MyAppAsignRider()
+                MyAppAsignRider(donationTitle,donationDesc,donThumb,emailRec)
             }
         }
     }
@@ -179,7 +182,7 @@ class AssignRider : ComponentActivity() {
 
 
 @Composable
-fun MyAppAsignRider() {
+fun MyAppAsignRider(donationTitle: String,donationDesc: String, donThumb: String, emailRecipient: String){
     val pushDownOverscrollEffect = rememberPushDownOverscrollEffect()
     val scrollState = rememberScrollState()
 
@@ -187,7 +190,7 @@ fun MyAppAsignRider() {
     val coroutineScope = rememberCoroutineScope()
 
     val context = LocalContext.current
-    val activity = (context as AssignRider)
+    val activity = (context as assignRider)
 
     SideEffect {
         WindowCompat.setDecorFitsSystemWindows(activity.window, false)
@@ -215,7 +218,7 @@ fun MyAppAsignRider() {
                     .padding(innerPadding)
             ) {
              
-                ListVolunteers()
+                ListVolunteers(donationTitle,donationDesc, donThumb,emailRecipient)
             }
         }
     }
@@ -235,7 +238,7 @@ fun LottieAnimationFromUrl(url: String) {
 
 
 @Composable
-fun ListVolunteers() {
+fun ListVolunteers(donTitle: String, donDesc: String, donThumb: String, emailRec: String) {
     val context = LocalContext.current
     var selectedCategory by remember { mutableStateOf("All") }  // Default category "All"
     val allSchedules = remember { mutableStateListOf<AllTypes>() }
@@ -261,10 +264,11 @@ fun ListVolunteers() {
                 bikeSchedules.clear()
 
                 for (document in querySnapshot.documents) {
-                    
+                    val firstName = document.getString("volunteer_firstname") ?: ""
+                    val lastName = document.getString("volunteer_lastname") ?: ""
  
                     val donationPost = AllTypes(
-                    volunteerName = document.getString("volunteer_firstname") ?: "",
+                    volunteerName = firstName + " " + lastName,
                         courriertype = document.getString("volunteer_courrier") ?: "",
                         volunteerEmail = document.getString("volunteer_email") ?: "",
                         imageProfile = document.getString("volunteer_profileimage") ?: ""
@@ -274,7 +278,7 @@ fun ListVolunteers() {
 
                     // Add to the corresponding list based on the selected category
                     when (document.getString("volunteer_courrier")) {
-                        "Rider" -> riderSchedules.add(RiderSchedule(volunteerName = document.getString("volunteer_firstname") ?: "",
+                        "Motorcycle" -> riderSchedules.add(RiderSchedule(volunteerName = document.getString("volunteer_firstname") ?: "",
                         courriertype = document.getString("volunteer_courrier") ?: "",
                         volunteerEmail = document.getString("volunteer_email") ?: "",
                         imageProfile = document.getString("volunteer_profileimage") ?: ""))
@@ -315,7 +319,7 @@ fun ListVolunteers() {
                 .padding(start = 30.dp)
         ) {
             categoryDonationChooser("All", selectedCategory) { selectedCategory = it }
-            categoryDonationChooser("Rider", selectedCategory) { selectedCategory = it }
+            categoryDonationChooser("Motorcycle", selectedCategory) { selectedCategory = it }
             categoryDonationChooser("Car", selectedCategory) { selectedCategory = it }
             categoryDonationChooser("Bike", selectedCategory) { selectedCategory = it }
         }
@@ -323,85 +327,461 @@ fun ListVolunteers() {
         Spacer(modifier = Modifier.height(4.dp))
 
         // Determine the selected items list based on the category
-        val itemsList = when (selectedCategory) {
-            "All" -> allSchedules
-            "Rider" -> riderSchedules
-            "Car" -> carSchedules
-            "Bike" -> bikeSchedules
-            else -> allSchedules
-        }
+        val itemsList: List<Volunteer> = when (selectedCategory) {
+    "All" -> allSchedules
+    "Motorcycle" -> riderSchedules
+    "Car" -> carSchedules
+    "Bike" -> bikeSchedules
+    else -> allSchedules
+}
 
-        if (itemsList.isEmpty()) {
-            // Show Lottie animation if the selected category's list is empty
-            Column(
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(24.dp))
-                LottieAnimationFromUrl("https://lottie.host/b9cc6eec-b9da-4596-b151-e0b2d5a6d9be/0bfHlCFArT.json")
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "No Schedules",
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF8070F6)
+
+if (itemsList.isEmpty()) {
+    // Show Lottie animation if the selected category's list is empty
+    Column(
+        modifier = Modifier.align(Alignment.CenterHorizontally),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(24.dp))
+        LottieAnimationFromUrl("https://lottie.host/b9cc6eec-b9da-4596-b151-e0b2d5a6d9be/0bfHlCFArT.json")
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "No Schedules",
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF8070F6)
+        )
+    }
+} else {
+    // Display the LazyRow for the selected items list
+    LazyColumn(
+    contentPadding = PaddingValues(16.dp),
+    verticalArrangement = Arrangement.spacedBy(8.dp)
+) {
+    items(itemsList.size) { index ->
+        val volunteer = itemsList[index]
+
+        when (selectedCategory) {
+            "Motorcycle" -> {
+                MotorBikeInfo(
+                    riderEmail = volunteer.volunteerEmail,
+                    riderName = volunteer.volunteerName,
+                    riderVehicle = volunteer.courriertype,
+                    imageUri = volunteer.imageProfile,
+                    onClick = {
+                        val intent = Intent(context, AssignRiderInfo::class.java).apply {
+                            putExtra("volunteerEmail", volunteer.volunteerEmail)
+                            putExtra("volunteerName", volunteer.volunteerName)
+                            putExtra("courriertype", volunteer.courriertype)
+                            putExtra("imageProfile", volunteer.imageProfile)
+                            putExtra("donTitle", donTitle)
+                            putExtra("donDesc", donDesc)
+                            putExtra("donThumb", donThumb)
+                            putExtra("recEmail",emailRec)
+                        }
+                        context.startActivity(intent)
+                    }
                 )
             }
-        } else {
-          /*  // Display the LazyRow for the selected items list
-            LazyRow(
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(itemsList.size) { index ->
-                    val donation = itemsList[index]
-                    displaySchedulesDonationModel(
-                        userClaimedDonation = donation.userClaimedDonation,
-                        imageUri = donation.imageUri,
-                        donationDescription = donation.donationDescription,
-                        packageStatus = donation.packageStatus,
-                        onClick = {
-                            // Handle click here
+            "Car" -> {
+                CarInfo(
+                    riderEmail = volunteer.volunteerEmail,
+                    riderName = volunteer.volunteerName,
+                    riderVehicle = volunteer.courriertype,
+                    imageUri = volunteer.imageProfile,
+                    onClick = {
+                        val intent = Intent(context, AssignRiderInfo::class.java).apply {
+                            putExtra("volunteerEmail", volunteer.volunteerEmail)
+                            putExtra("volunteerName", volunteer.volunteerName)
+                            putExtra("courriertype", volunteer.courriertype)
+                            putExtra("imageProfile", volunteer.imageProfile)
+                            putExtra("donTitle", donTitle)
+                            putExtra("donDesc", donDesc)
+                            putExtra("donThumb", donThumb)
+                            putExtra("recEmail",emailRec)
                         }
-                    )
-                }
-            }*/
-            
-            
+                        context.startActivity(intent)
+                    }
+                )
+            }
+            "Bike" -> {
+                BikeInfo(
+                    riderEmail = volunteer.volunteerEmail,
+                    riderName = volunteer.volunteerName,
+                    riderVehicle = volunteer.courriertype,
+                    imageUri = volunteer.imageProfile,
+                    onClick = {
+                        val intent = Intent(context, AssignRiderInfo::class.java).apply {
+                            putExtra("volunteerEmail", volunteer.volunteerEmail)
+                            putExtra("volunteerName", volunteer.volunteerName)
+                            putExtra("courriertype", volunteer.courriertype)
+                            putExtra("imageProfile", volunteer.imageProfile)
+                            putExtra("donTitle", donTitle)
+                            putExtra("donDesc", donDesc)
+                            putExtra("donThumb", donThumb)
+                            putExtra("recEmail",emailRec)
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+            }
+            else -> {
+                AllInfo(
+                    riderEmail = volunteer.volunteerEmail,
+                    riderName = volunteer.volunteerName,
+                    riderVehicle = volunteer.courriertype,
+                    imageUri = volunteer.imageProfile,
+                    onClick = {
+                        val intent = Intent(context, AssignRiderInfo::class.java).apply {
+                            putExtra("volunteerEmail", volunteer.volunteerEmail)
+                            putExtra("volunteerName", volunteer.volunteerName)
+                            putExtra("courriertype", volunteer.courriertype)
+                            putExtra("imageProfile", volunteer.imageProfile)
+                            putExtra("donTitle", donTitle)
+                            putExtra("donDesc", donDesc)
+                            putExtra("donThumb", donThumb)
+                            putExtra("recEmail",emailRec)
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+            }
         }
     }
 }
 
-// AllTypes data class
+    
+    }
+    
+    }
+    
+    }
+
+
+
+interface Volunteer {
+    val volunteerName: String
+    val courriertype: String
+    val volunteerEmail: String
+    val imageProfile: String
+}
+
 data class AllTypes(
-    val volunteerName: String,
-    val courriertype: String,
-    val imageProfile: String,
-    val volunteerEmail: String
-)
+    override val volunteerName: String,
+    override val courriertype: String,
+    override val volunteerEmail: String,
+    override val imageProfile: String
+) : Volunteer
 
-// RiderSchedule data class
-data class RiderSchedule(    
-    val volunteerName: String,
-    val courriertype: String,
-    val imageProfile: String,
-    val volunteerEmail: String
-)
+data class RiderSchedule(
+    override val volunteerName: String,
+    override val courriertype: String,
+    override val volunteerEmail: String,
+    override val imageProfile: String
+) : Volunteer
 
-// CarSchedule data class
-data class CarSchedule(    
-    val volunteerName: String,
-    val courriertype: String,
-    val imageProfile: String,
-    val volunteerEmail: String
-)
+data class CarSchedule(
+    override val volunteerName: String,
+    override val courriertype: String,
+    override val volunteerEmail: String,
+    override val imageProfile: String
+) : Volunteer
 
-// BikeSchedule data class
-data class BikeSchedule(    
-    val volunteerName: String,
-    val courriertype: String,
-    val imageProfile: String,
-    val volunteerEmail: String
-)
+data class BikeSchedule(
+    override val volunteerName: String,
+    override val courriertype: String,
+    override val volunteerEmail: String,
+    override val imageProfile: String
+) : Volunteer
+
+
+@Composable
+fun AllInfo(
+    riderEmail: String,
+    riderName: String,
+    riderVehicle: String,
+    imageUri: String,
+    onClick: () -> Unit 
+) {
+val thumbnail =  Uri.parse(imageUri).toString() 
+Column(
+        horizontalAlignment = Alignment.Start,
+        modifier = Modifier
+            .padding(top = 4.dp, bottom = 4.dp)
+                        .clickable(onClick = { onClick() })
+    ) {
+    
+    
+    Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
+            ) {
+                AsyncImage(
+                    model = thumbnail,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(color = Color.Gray),
+                    contentScale = ContentScale.Crop
+                )
+                Column(
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .padding(start = 14.dp)
+                ) {
+                    Text(
+                        text = "Rider name: $riderName",
+                        fontSize = 14.sp,
+                        color = Color(0xFF8070F6),
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Start
+                    )
+                    Text(
+                        text = "Vehicle Type: $riderVehicle",
+                        fontSize = 11.sp,
+                        color = Color(0xFFA498FC),
+                        fontWeight = FontWeight.Normal,
+                        textAlign = TextAlign.Start
+                    )
+                    
+                }
+            }
+    }
+}
+
+@Composable
+fun BikeInfo(
+    riderEmail: String,
+    riderName: String,
+    riderVehicle: String,
+    imageUri: String,
+    onClick: () -> Unit 
+) {
+val thumbnail =  Uri.parse(imageUri).toString() 
+Column(
+        horizontalAlignment = Alignment.Start,
+        modifier = Modifier
+            .padding(top = 4.dp, bottom = 4.dp)
+                        .clickable(onClick = { onClick() })
+    ) {
+    
+    
+    Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(36.dp)
+            ) {
+                AsyncImage(
+                    model = thumbnail,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(color = Color.Gray),
+                    contentScale = ContentScale.Crop
+                )
+                Column(
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .padding(start = 14.dp)
+                ) {
+                    Text(
+                        text = "Rider name: $riderName",
+                        fontSize = 14.sp,
+                        color = Color(0xFF8070F6),
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Start
+                    )
+                    Text(
+                        text = "Vehicle Type: $riderVehicle",
+                        fontSize = 11.sp,
+                        color = Color(0xFFA498FC),
+                        fontWeight = FontWeight.Normal,
+                        textAlign = TextAlign.Start
+                    )
+                    
+                }
+            }
+    }
+}
+
+@Composable
+fun MotorBikeInfo(
+    riderEmail: String,
+    riderName: String,
+    riderVehicle: String,
+    imageUri: String,
+    onClick: () -> Unit 
+) {
+val thumbnail =  Uri.parse(imageUri).toString() 
+Column(
+        horizontalAlignment = Alignment.Start,
+        modifier = Modifier
+            .padding(top = 4.dp, bottom = 4.dp)
+                        .clickable(onClick = { onClick() })
+    ) {
+    
+    
+    Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(36.dp)
+            ) {
+                AsyncImage(
+                    model = thumbnail,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(color = Color.Gray),
+                    contentScale = ContentScale.Crop
+                )
+                Column(
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .padding(start = 14.dp)
+                ) {
+                    Text(
+                        text = "Rider name: $riderName",
+                        fontSize = 14.sp,
+                        color = Color(0xFF8070F6),
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Start
+                    )
+                    Text(
+                        text = "Vehicle Type: $riderVehicle",
+                        fontSize = 11.sp,
+                        color = Color(0xFFA498FC),
+                        fontWeight = FontWeight.Normal,
+                        textAlign = TextAlign.Start
+                    )
+                    
+                }
+            }
+    }
+}
+
+@Composable
+fun CarInfo(
+    riderEmail: String,
+    riderName: String,
+    riderVehicle: String,
+    imageUri: String,
+    onClick: () -> Unit 
+) {
+val thumbnail =  Uri.parse(imageUri).toString() 
+Column(
+        horizontalAlignment = Alignment.Start,
+        modifier = Modifier
+            .padding(top = 4.dp, bottom = 4.dp)
+                        .clickable(onClick = { onClick() })
+    ) {
+    
+    
+    Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(36.dp)
+            ) {
+                AsyncImage(
+                    model = thumbnail,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(color = Color.Gray),
+                    contentScale = ContentScale.Crop
+                )
+                Column(
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .padding(start = 14.dp)
+                ) {
+                    Text(
+                        text = "Rider name: $riderName",
+                        fontSize = 14.sp,
+                        color = Color(0xFF8070F6),
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Start
+                    )
+                    Text(
+                        text = "Vehicle Type: $riderVehicle",
+                        fontSize = 11.sp,
+                        color = Color(0xFFA498FC),
+                        fontWeight = FontWeight.Normal,
+                        textAlign = TextAlign.Start
+                    )
+                    
+                }
+            }
+    }
+}
+
+
+
+
+@Composable
+fun RiderInfo(
+    riderEmail: String,
+    riderName: String,
+    riderVehicle: String,
+    imageUri: String,
+    onClick: () -> Unit 
+) {
+val thumbnail =  Uri.parse(imageUri).toString() 
+Column(
+        horizontalAlignment = Alignment.Start,
+        modifier = Modifier
+            .padding(top = 4.dp, bottom = 4.dp)
+                        .clickable(onClick = { onClick() })
+    ) {
+    
+    
+    Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(36.dp)
+            ) {
+                AsyncImage(
+                    model = thumbnail,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(color = Color.Gray),
+                    contentScale = ContentScale.Crop
+                )
+                Column(
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .padding(start = 14.dp)
+                ) {
+                    Text(
+                        text = "Rider name: $riderName",
+                        fontSize = 14.sp,
+                        color = Color(0xFF8070F6),
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Start
+                    )
+                    Text(
+                        text = "Vehicle Type: $riderVehicle",
+                        fontSize = 11.sp,
+                        color = Color(0xFFA498FC),
+                        fontWeight = FontWeight.Normal,
+                        textAlign = TextAlign.Start
+                    )
+                    
+                }
+            }
+    }
+}
+
 
 @Composable
 fun TopBarAssign(onMenuClick: () -> Unit, isScrolled: Boolean) {

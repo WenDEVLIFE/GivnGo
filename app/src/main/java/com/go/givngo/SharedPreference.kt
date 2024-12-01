@@ -37,6 +37,42 @@ private const val KEY_PRIMARY_ADDRESS = "ACCOUNTADDRESS"
     private fun getSharedPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE)
     }
+    // Subscripton method
+    fun saveWeekly(context: Context, emailId: String) {
+        getSharedPreferences(context).edit().putString(KEY_REGIS_STATUS, emailId).apply()
+    }
+
+    fun getWeekly(context: Context): String? {
+        return getSharedPreferences(context).getString(KEY_REGIS_STATUS, null)
+    }
+
+    fun clearWeekly(context: Context) {
+        getSharedPreferences(context).edit().remove(KEY_REGIS_STATUS).apply()
+    }
+    
+    fun saveMonthly(context: Context, emailId: String) {
+        getSharedPreferences(context).edit().putString(KEY_REGIS_STATUS, emailId).apply()
+    }
+
+    fun getMonthly(context: Context): String? {
+        return getSharedPreferences(context).getString(KEY_REGIS_STATUS, null)
+    }
+
+    fun clearMonthly(context: Context) {
+        getSharedPreferences(context).edit().remove(KEY_REGIS_STATUS).apply()
+    }
+    
+    fun saveYearly(context: Context, emailId: String) {
+        getSharedPreferences(context).edit().putString(KEY_REGIS_STATUS, emailId).apply()
+    }
+
+    fun getYearly(context: Context): String? {
+        return getSharedPreferences(context).getString(KEY_REGIS_STATUS, null)
+    }
+
+    fun clearYearly(context: Context) {
+        getSharedPreferences(context).edit().remove(KEY_REGIS_STATUS).apply()
+    }
     
     // Logged In methods
     fun getIsLoggedIn(context: Context): Boolean {

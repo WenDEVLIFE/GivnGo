@@ -141,7 +141,7 @@ import androidx.compose.ui.window.Dialog
 
 import android.util.Log
 import com.go.givngo.SharedPreferences
-
+import com.go.givngo.ridersSide.RegistrationRiders
 
 
 class greetings : ComponentActivity() {
@@ -149,12 +149,35 @@ class greetings : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
     
         super.onCreate(savedInstanceState)
-        
-        
+
         
         setContent {
-            MyComposeApplicationTheme {
-                MyAppGreetings()
+            val context = LocalContext.current
+            
+            val finishBasic = SharedPreferences.getStatusType(context) ?: "Developer"
+
+            when (finishBasic) {
+
+                "Donor" -> {
+
+                    val intent = Intent(context, MainActivity::class.java)
+                    context.startActivity(intent)
+
+                }
+                "Recipient" -> {
+                    val intent = Intent(context, MainActivity::class.java)
+                    context.startActivity(intent)
+                }
+                "Rider" -> {
+                    val intent = Intent(context, MainActivity::class.java)
+                    context.startActivity(intent)
+
+                }"Developer" -> {
+                MyComposeApplicationTheme {
+                    MyAppGreetings()
+                }
+            }
+
             }
         }
     }
@@ -504,6 +527,10 @@ val launcher = rememberLauncherForActivityResult(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp)
+                    .clickable {
+                val intent = Intent(context, RegistrationRiders::class.java)
+                launcher.launch(intent)
+            }
                     .padding(bottom = 8.dp)
                     .background(
                         color = Color.White.copy(alpha = 0.15f),

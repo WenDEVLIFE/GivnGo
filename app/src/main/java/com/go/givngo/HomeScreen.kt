@@ -165,7 +165,7 @@ fun HomeScreenRider(navController: NavController, setSelectedItem: (Int) -> Unit
         Spacer(modifier = Modifier.height(18.dp))
         HorizontalLine()
         Spacer(modifier = Modifier.height(18.dp))
-        BottomHeadline()
+        BottomHeadlineRider()
         Spacer(modifier = Modifier.height(18.dp))
         RiderBrowseOptions(navController, setSelectedItem)  
         Spacer(modifier = Modifier.height(40.dp))

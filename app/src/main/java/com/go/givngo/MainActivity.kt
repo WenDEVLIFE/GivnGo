@@ -171,10 +171,12 @@ class MainActivity : ComponentActivity() {
                 val statusUser = SharedPreferences.getStatusType(context) ?: "Developer"
                 val finishBasic = intent.getStringExtra("signup_finish_basic") ?: "Developer"
                 
+                val activity = (context as MainActivity)
+
                 BackHandler {
                     // Handle back press here
                     // For example, to quit the app:
-                    finish()
+                    activity.finish()
                 }
                 
                 when (statusUser) {
@@ -189,8 +191,10 @@ class MainActivity : ComponentActivity() {
                         MyAppRider(userFinishBasic = finishBasic)
                     }
                     "Developer" -> {
-                        val intent = Intent(context, greetings::class.java)
-                        context.startActivity(intent)
+                       /* val intent = Intent(context, greetings::class.java)
+                        context.startActivity(intent) */
+                        
+                        MyAppRider(userFinishBasic = finishBasic)
                     }
                 }
             }

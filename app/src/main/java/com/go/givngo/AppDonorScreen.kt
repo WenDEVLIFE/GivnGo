@@ -46,38 +46,57 @@ import com.go.givngo.bottomBar.model.ItemStyle
 import com.go.givngo.ui.modifer.drawColoredShadow
 import kotlinx.coroutines.launch
 
+import android.content.Intent
+
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.zIndex
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import com.go.givngo.Messenger.messengerUserList
+/*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.animation.*
+*/
+
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.forEachGesture
+
 @Composable
 fun MyAppDonor(userFinishBasic: String) {
+
+var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+    
     val scaffoldState = rememberScaffoldState()
     val coroutineScope = rememberCoroutineScope()
-
     val navController = rememberNavController()
     val navBackStackEntry = navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry.value?.destination?.route
-
     val navigationItems = listOf(
         MainNavigation.Home,
         MainNavigation.Points,
         MainNavigation.MyDonations
     )
-
-
-
     var selectedItem by remember { mutableStateOf(0) }
-
     val context = LocalContext.current
     val activity = (context as MainActivity)
 
+    
     SideEffect {
         WindowCompat.setDecorFitsSystemWindows(activity.window, false)
         activity.window.statusBarColor = Color.Transparent.toArgb()
-
         WindowCompat.getInsetsController(activity.window, activity.window.decorView)?.isAppearanceLightStatusBars = false
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) {
         // Background Image
         Image(
@@ -88,6 +107,7 @@ fun MyAppDonor(userFinishBasic: String) {
                 .background(Color.Transparent),
             contentScale = ContentScale.Crop
         )
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -104,7 +124,7 @@ fun MyAppDonor(userFinishBasic: String) {
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .background(color = Color.Transparent),
-            topBar = { TopBar{ coroutineScope.launch { scaffoldState.drawerState.open() } } },
+            topBar = { TopBar { coroutineScope.launch { scaffoldState.drawerState.open() } } },
             drawerContent = {
                 Box(
                     modifier = Modifier
@@ -112,7 +132,7 @@ fun MyAppDonor(userFinishBasic: String) {
                         .width(280.dp)
                         .clip(RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp))
                         .background(Color.White, shape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp))
-                        .padding(end=25.dp)
+                        .padding(end = 25.dp)
                 ) {
                     AppDrawer(
                         userFinishBasic,
@@ -130,18 +150,18 @@ fun MyAppDonor(userFinishBasic: String) {
                         .fillMaxWidth()
                         .padding(start = 25.dp, end = 25.dp, bottom = 23.dp)
                         .drawColoredShadow(
-                            color = Color.Black, // Shadow color
-                            alpha = 0.1f, // Shadow alpha
-                            borderRadius = 30.dp, // Rounded corners
-                            blurRadius = 2.dp, // Blur radius
-                            offsetY = 5.dp // Y offset for the shadow
+                            color = Color.Black,
+                            alpha = 0.1f,
+                            borderRadius = 30.dp,
+                            blurRadius = 2.dp,
+                            offsetY = 5.dp
                         )
                         .background(Color(0xFFFAF9FE), shape = RoundedCornerShape(23.dp))
                         .padding(top = 6.dp)
                 ) {
                     Column(
-                        verticalArrangement = Arrangement.Center, // Centers items vertically within the Column
-                        horizontalAlignment = Alignment.CenterHorizontally // Centers items horizontally within the Column
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         AnimatedBottomBar(
                             selectedItem = selectedItem,
@@ -151,7 +171,7 @@ fun MyAppDonor(userFinishBasic: String) {
                             indicatorColor = Color(0xFF8070F6),
                             indicatorStyle = IndicatorStyle.DOT,
                             modifier = Modifier
-                                .padding(bottom = 8.dp) // Add bottom padding here
+                                .padding(bottom = 8.dp)
                         ) {
                             navigationItems.forEachIndexed { index, navigationItem ->
                                 val imageVector = ImageVector.vectorResource(id = navigationItem.iconResId)
@@ -186,16 +206,61 @@ fun MyAppDonor(userFinishBasic: String) {
                 }
             }
         ) { innerPadding ->
-            androidx.navigation.compose.NavHost(
-                navController = navController,
-                startDestination = MainNavigation.Home.route,
-                modifier = Modifier.padding(innerPadding)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
             ) {
-                composable(MainNavigation.Home.route) { HomeScreenDonor() }
-                composable(MainNavigation.Points.route) { donationPoints() }
-                composable(MainNavigation.MyDonations.route) { myDonations() }
+                androidx.navigation.compose.NavHost(
+                    navController = navController,
+                    startDestination = MainNavigation.Home.route,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    composable(MainNavigation.Home.route) { HomeScreenDonor() }
+                    composable(MainNavigation.Points.route) { donationPoints() }
+                    composable(MainNavigation.MyDonations.route) { myDonations() }
+                }
+                
+                Box(
+                    modifier = Modifier
+                                            .pointerInput(Unit) {
+                detectDragGestures { change, dragAmount ->
+                    // Update the offsets based on drag gesture
+                    offsetX += dragAmount.x
+                    offsetY += dragAmount.y
+                }
+            }
+            .offset {
+                IntOffset(offsetX.roundToInt(), offsetY.roundToInt())
+            }                        
+                    )
+                    {
+                    
+                       // Movable ChatBox
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFEB4747))
+                        .clickable {
+                            val intent = Intent(context, messengerUserList::class.java).apply {
+                                putExtra("accountType", "Donor")
+                            }
+                            context.startActivity(intent)
+                        }
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_chat),
+                        contentDescription = "Chat",
+                        modifier = Modifier.align(Alignment.Center).size(50.dp)
+                    )
+                }
+                
+                    }
+             
             }
         }
     }
 }
+
 

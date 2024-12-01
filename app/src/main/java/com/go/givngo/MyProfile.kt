@@ -213,16 +213,9 @@ var donorBio: String = ""
     LaunchedEffect(userCurrentSignedInEmail) {
         if (userCurrentSignedInEmail.isNotEmpty()) {
         
-            val collectionPath = when (statusUser) {
-                "Donor" -> "Donor"
-                "Recipient" -> "Recipient"
-                "Volunteer" -> "Volunteer"
-                else -> return@LaunchedEffect
-            }
-
             firestore.collection("GivnGoAccounts")
                 .document(userAccountType)
-                .collection(collectionPath)
+                .collection(statusUser)
                 .document(userCurrentSignedInEmail)
                 .get()
                 .addOnSuccessListener { document ->

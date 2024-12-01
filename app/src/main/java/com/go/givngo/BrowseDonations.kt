@@ -1,5 +1,6 @@
 package com.go.givngo
 
+import android.annotation.SuppressLint
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import java.util.UUID
+import android.content.Context
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -51,6 +53,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
 import org.json.JSONObject
+import com.google.firebase.firestore.DocumentSnapshot
+import com.go.givngo.subscriptionDialog
+import android.content.Intent
 
 @Composable
 fun BrowseDonations() {
@@ -62,6 +67,81 @@ fun BrowseDonations() {
 
     val myDonations = remember { mutableStateListOf<DonationPost>() }
     var searchQuery by remember { mutableStateOf("") }
+    
+    
+    val statusType = "Recipient"
+    val emailRecipient = SharedPreferences.getEmail(context) ?: "developer@gmail.com"
+    val accountBasicType = SharedPreferences.getBasicType(context) ?: "developer@gmail.com"
+    var claimLimits by remember { mutableStateOf(0L) }
+    var addClaim by remember { mutableStateOf(0L) }
+
+    var postIdentification by remember { mutableStateOf("") }
+    var donorPointsForPost by remember { mutableStateOf(0L) }
+
+    var donorPoints by remember { mutableStateOf(0L) }
+    var accountFound = false
+    var accountFoundTwo = false
+    var accountFoundFive =false
+    
+    val db = FirebaseFirestore.getInstance()
+                val accountsRef = db.collection("GivnGoAccounts")
+
+    fun listenToAccountChangesDonorGet(collectionPath: String, email: String) {
+                
+                accountsRef.document(collectionPath).collection("Recipient")
+            .document(email)
+            .addSnapshotListener { documentSnapshot, error ->
+                if (error != null) {
+                    // Handle error
+                    return@addSnapshotListener
+                }
+                if (documentSnapshot != null && documentSnapshot.exists()) {
+                    // Extract data from the document
+                     claimLimits = documentSnapshot.getLong("recipient_claim_limits") ?: 0L
+                     addClaim = documentSnapshot.getLong("recipient_claim_status") ?: 0L
+                    accountFoundTwo = true
+
+                    }
+            }
+    }
+    
+    LaunchedEffect(Unit) {
+        listenToAccountChangesDonorGet("BasicAccounts", emailRecipient)
+
+        if (!accountFoundTwo) {
+            listenToAccountChangesDonorGet("VerifiedAccounts", emailRecipient)
+        }
+    }
+
+    fun listenToAccountChangesDonorUpdatePoints(collectionPath: String, email: String, postIdentification:String, donorPointsForPost:Long) {
+
+        accountsRef.document(collectionPath).collection("Donor")
+            .document(email)
+            .collection("MyPoints")
+            .document("Post")
+            .collection("Unclaimed_Points")
+            .document(postIdentification)
+            .update(
+                "donation_points_to_claim", donorPointsForPost
+            )
+            .addOnSuccessListener {
+accountFoundFive = true
+            }
+    }
+
+    fun listenToAccountChangesRecipientUpdate(collectionPath: String, email: String, newClaim: Long) {
+
+                accountsRef.document(collectionPath).collection("Recipient")
+            .document(email)
+            .update(
+            "recipient_claim_status", newClaim
+            )
+            .addOnSuccessListener {
+
+            }
+    }
+
+
 
     LaunchedEffect(Unit) {
         firestore.collection("GivnGoPublicPost")
@@ -78,10 +158,13 @@ fun BrowseDonations() {
                     if (claimStatus == "Unclaimed") {
                         DonationPost(
                             documentId = documentId,
+                            pointsId = data["donatioon_points_id"] as? String ?: "No Title",
+                            pointsToEarn =  data["donation_points_to_earn"] as? Long ?: 0L,
                             title = data["donation_post_title"] as? String ?: "No Title",
                             description = data["donation_post_description"] as? String ?: "No Description",
                             donor = data["donor_name"] as? String ?: "Unknown Donor",
                             donor_email = data["donor_email"] as? String ?: "Unknown Email",
+                            delivery_method = data["delivery_method"] as? String ?: "Unknown Delivery Method",
                             image_thumbnail = null,
                             images_donation = emptyList()
                         )
@@ -204,13 +287,17 @@ fun BrowseDonations() {
                     PostDisplayModel(
                         userDonationPost = donation.title,
                         imageUrl = donation.image_thumbnail,
-                        onClick = { selectedPost = donation }
+                        onClick = { 
+            selectedPost = donation
+            
+                        
+                         }
                     )
                 }
             }
         }
     }
-        // Send HTTP POST request
+            // Send HTTP POST request
     fun sendPostRequest(url: String, json: JSONObject) {
         val request = JsonObjectRequest(
             Request.Method.POST, url, json,
@@ -228,147 +315,17 @@ fun BrowseDonations() {
         Volley.newRequestQueue(context).add(request)
     }
 
-        // Push Notification Function
-    fun sendPushNotification(fcmToken: String, title: String, body: String, email: String) {
-        val url = "https://lt-ruletagalog.vercel.app/api/givngo/trigger"
 
-        val json = JSONObject()
-        json.put("fcmToken", fcmToken)
-        json.put("title", title)
-        json.put("body", body)
-        json.put("email", email)
-
-        // Send the POST request to the server
-        sendPostRequest(url, json)
-    }
-
-
-    // Display CustomDonationDialog when a donation is selected
-    selectedPost?.let { donationPost ->
-    CustomDonationDialog(
-        donationPost = donationPost,
-        onDismissRequest = { selectedPost = null },
-        onClaimDonation = {
-            Log.d("DonationClaim", "Claimed donation with ID: ${donationPost.documentId}")
-
-            val firestore = FirebaseFirestore.getInstance()
-            val recipientEmail = SharedPreferences.getEmail(context) ?: "Developer"
-            val recipientFirstName = SharedPreferences.getFirstName(context) ?: "Developer"
-            val claimedData = mutableMapOf<String, Any>(
-                "documentId" to donationPost.documentId,
-                "title" to donationPost.title,
-                "description" to donationPost.description,
-                "donor" to donationPost.donor,
-                "donor_email" to donationPost.donor_email,
-                "image_thumbnail" to (donationPost.image_thumbnail?.toString() ?: ""),
-                "images_donation" to donationPost.images_donation.map { it.toString() }
-            )
-
-            try {
-                // Update `donation_claim_status` to "Claimed"
-                firestore.collection("GivnGoPublicPost")
-                    .document("DonationPosts")
-                    .collection("Posts")
-                    .document(donationPost.documentId ?: "defaultDocId")
-                    .update("donation_claim_status", "Claimed")
-                    .addOnSuccessListener {
-                        // Check for donor's FCM token in BasicAccounts first, then VerifiedAccounts
-                        val donorEmail = donationPost.donor_email
-
-                        // First check in BasicAccounts collection
-                        firestore.collection("GivnGoAccounts")
-                            .document("BasicAccounts")
-                            .collection("Donor")
-                            .document(donorEmail)
-                            .get()
-                            .addOnSuccessListener { donorDoc ->
-                                if (donorDoc.exists()) {
-                                    // If the donor exists in BasicAccounts, use the FCM token
-                                    val fcmToken = donorDoc.getString("fcmToken")
-                                    
-                                    val accountOne = "BasicAccounts"
-                                    
-                                    if (fcmToken != null) {
-                                        sendPushNotification(fcmToken, "Your donation was claimed!", "Your Donation ${donationPost.title} was claimed by $recipientFirstName", donationPost.donor_email)
-                                    }
-
-                                    // Save notification in MyNotifications for BasicAccounts donor
-                                    saveNotificationToFirestore(accountOne, firestore, donationPost.donor_email, recipientFirstName, donationPost.title,donationPost.image_thumbnail?.toString() ?: "", donationPost.documentId)
-                                } else {
-                                    // If not found in BasicAccounts, check in VerifiedAccounts
-                                    firestore.collection("GivnGoAccounts")
-                                        .document("VerifiedAccounts")
-                                        .collection("Donor")
-                                        .document(donorEmail)
-                                        .get()
-                                        .addOnSuccessListener { verifiedDonorDoc ->
-                                            if (verifiedDonorDoc.exists()) {
-                                            
-                                            val accountTwo = "VerifiedAccounts"
-                                                // If the donor exists in VerifiedAccounts, use the FCM token
-                                                val fcmToken = verifiedDonorDoc.getString("fcmToken")
-                                                if (fcmToken != null) {
-                                                    sendPushNotification(fcmToken, "Your donation was claimed!", "Your Donation ${donationPost.title} was claimed by $recipientFirstName", donationPost.donor_email)
-                                                }
-
-                                                // Save notification in MyNotifications for VerifiedAccounts donor
-                                                saveNotificationToFirestore(accountTwo,firestore, donationPost.donor_email, recipientFirstName, donationPost.title,donationPost.image_thumbnail?.toString() ?: "", donationPost.documentId)
-                                            } else {
-                                                // If donor is not found in either collection
-                                                Log.e("DonationClaim", "Donor not found in BasicAccounts or VerifiedAccounts")
-                                            }
-                                        }
-                                        .addOnFailureListener { exception ->
-                                            Log.e("FirestoreError", "Error fetching donor from VerifiedAccounts: ", exception)
-                                        }
-                                }
-                            }
-                            .addOnFailureListener { exception ->
-                                Log.e("FirestoreError", "Error fetching donor from BasicAccounts: ", exception)
-                            }
-                    }
-                    .addOnFailureListener { exception ->
-                        Log.e("FirestoreError", "Failed to update donation status: ", exception)
-                        Toast.makeText(context, "Failed to update donation status: ${exception.message}", Toast.LENGTH_LONG).show()
-                    }
-            } catch (e: Exception) {
-                Log.e("FirestoreError", "Unexpected error during status update: ", e)
-                Toast.makeText(context, "Unexpected error: ${e.message}", Toast.LENGTH_LONG).show()
-            }
-
-            try {
-                // Store the claimed donation in the user's claimed list
-                firestore.collection("GivnGoAccounts")
-                    .document("BasicAccounts")
-                    .collection("Recipient")
-                    .document(recipientEmail)
-                    .collection("MyClaimedDonations")
-                    .document(donationPost.documentId ?: "defaultDocId")
-                    .set(claimedData)
-                    .addOnSuccessListener {
-                        Log.d("Firestore", "Donation claimed successfully.")
-                        selectedPost = null
-                    }
-                    .addOnFailureListener { exception ->
-                        Log.e("FirestoreError", "Failed to claim donation: ", exception)
-                        Toast.makeText(context, "Failed to claim donation: ${exception.message}", Toast.LENGTH_LONG).show()
-                    }
-            } catch (e: Exception) {
-                Log.e("FirestoreError", "Unexpected error during claiming: ", e)
-                Toast.makeText(context, "Unexpected error: ${e.message}", Toast.LENGTH_LONG).show()
-            }
-        }
-    )
-}
-
-}
-
-private fun saveNotificationToFirestore(path: String, firestore: FirebaseFirestore, donorEmail: String, recipientFirstName: String, donationTitle: String, imageThumbnail: String?, documentid: String) {
+    fun saveNotificationToFirestorePickUp(path: String, firestore: FirebaseFirestore, donorEmail: String, recipientFirstName: String, donationTitle: String, imageThumbnail: String?, documentid: String, deliveryPickup: String) {
+    val emailRecipient = SharedPreferences.getEmail(context) ?: "developer@gmail.com"
+    
     val notificationData = hashMapOf(
     "document_id" to documentid,
         "title" to "Your donation was claimed!",
-        "body" to "Your Donation $donationTitle was claimed by $recipientFirstName",
+        "body" to "Your Donation $donationTitle was claimed by $recipientFirstName ",
         "thumbnail" to imageThumbnail,
+        "Delivery_method" to deliveryPickup,
+        "recipient_email" to emailRecipient,
         "timestamp" to System.currentTimeMillis()
     )
 
@@ -391,3 +348,267 @@ private fun saveNotificationToFirestore(path: String, firestore: FirebaseFiresto
         }
 }
 
+        // Push Notification Function
+    fun sendPushNotification(fcmToken: String, title: String, body: String, email: String) {
+        val url = "https://lt-ruletagalog.vercel.app/api/givngo/trigger"
+
+        val json = JSONObject()
+        json.put("fcmToken", fcmToken)
+        json.put("title", title)
+        json.put("body", body)
+        json.put("email", email)
+
+        // Send the POST request to the server
+        sendPostRequest(url, json)
+    }
+
+    fun handleDonorAccountLogic(
+        firestore: FirebaseFirestore,
+        donationPost: DonationPost,
+        donorDoc: DocumentSnapshot,
+        accountType: String,
+        recipientFirstName: String,
+        recipientEmail: String
+    ) {
+        val fcmToken = donorDoc.getString("fcmToken") ?: ""
+
+        if (fcmToken != null) {
+        // Update the donation post to include the recipient's email
+        firestore.collection("GivnGoPublicPost")
+            .document("DonationPosts")
+            .collection("Posts")
+            .document(donationPost.documentId)
+            .update("claimed by", recipientEmail)
+            .addOnSuccessListener {
+                Log.d("FirestoreUpdate", "Successfully updated 'claimed by' field")
+
+                listenToAccountChangesDonorUpdatePoints("BasicAccounts", donationPost.donor_email, donationPost.pointsId, donationPost.pointsToEarn)
+
+                if (!accountFoundFive) {
+                    listenToAccountChangesDonorUpdatePoints("VerifiedAccounts", donationPost.donor_email, donationPost.pointsId, donationPost.pointsToEarn)
+                }
+
+                }
+            .addOnFailureListener { exception ->
+                Log.e("FirestoreUpdateError", "Failed to update 'claimed by' field", exception)
+            }
+
+        // Send a push notification to the donor
+        sendPushNotification(
+            fcmToken,
+            "Your donation was claimed!",
+            "Your Donation ${donationPost.title} was claimed by $recipientFirstName",
+            donationPost.donor_email
+        )
+
+        // Save notification details
+        saveNotificationToFirestore(
+            accountType,
+            context,
+            firestore,
+            donationPost.donor_email,
+            recipientFirstName,
+            donationPost.title,
+            donationPost.image_thumbnail?.toString() ?: "",
+            donationPost.documentId,
+            donationPost.delivery_method
+        )
+    } else {
+        Log.e("DonorAccountLogic", "FCM token not found for donor in $accountType")
+    }
+}
+
+    
+
+selectedPost?.let { donationPost ->
+    CustomDonationDialog(
+        donationPost = donationPost,
+        onDismissRequest = { selectedPost = null },
+        onClaimDonation = {
+            Log.d("DonationClaim", "Claimed donation with ID: ${donationPost.documentId}")
+
+            if (addClaim != claimLimits) { // Only proceed if addClaim is not equal to claimLimits
+                addClaim += 1L // Increment addClaim by 1
+                
+                // Call the function to update recipient claim status
+                listenToAccountChangesRecipientUpdate("BasicAccounts", emailRecipient, addClaim)
+
+                // Check if account is not found and update in VerifiedAccounts
+                if (!accountFound) {
+                    listenToAccountChangesRecipientUpdate("VerifiedAccounts", emailRecipient, addClaim)
+                }
+
+                val firestore = FirebaseFirestore.getInstance()
+                val recipientEmail = SharedPreferences.getEmail(context) ?: "Developer"
+                val recipientFirstName = SharedPreferences.getFirstName(context) ?: "Developer"
+                val claimedData = mutableMapOf<String, Any>(
+                    "documentId" to donationPost.documentId,
+                    "title" to donationPost.title,
+                    "description" to donationPost.description,
+                    "donor" to donationPost.donor,
+                    "donor_email" to donationPost.donor_email,
+                    "delivery_method" to donationPost.delivery_method,
+                    "image_thumbnail" to (donationPost.image_thumbnail?.toString() ?: ""),
+                    "images_donation" to donationPost.images_donation.map { it.toString() }
+                )
+
+                val pickUpClaimedData = mutableMapOf<String, Any>(
+                    "documentId" to donationPost.documentId,
+                    "donation_post_title" to donationPost.title,
+                    "donation_post_description" to donationPost.description,
+                    "donor" to donationPost.donor,
+                    "donor_email" to donationPost.donor_email,
+                    "donation_schedule_status" to donationPost.delivery_method,
+                    "donation_status" to "Pickup Status: Donor waiting for pickup",
+                    "delivery_method" to donationPost.delivery_method,
+                    "image_thumbnail" to (donationPost.image_thumbnail?.toString() ?: ""),
+                    "images_donation" to donationPost.images_donation.map { it.toString() }
+                )
+
+                try {
+                    // Update `donation_claim_status` to "Claimed"
+                    firestore.collection("GivnGoPublicPost")
+                        .document("DonationPosts")
+                        .collection("Posts")
+                        .document(donationPost.documentId ?: "defaultDocId")
+                        .update("donation_claim_status", "Claimed")
+                        .addOnSuccessListener {
+                            // Check for donor's FCM token in BasicAccounts first, then VerifiedAccounts
+                            val donorEmail = donationPost.donor_email
+
+                            // First check in BasicAccounts collection
+                            firestore.collection("GivnGoAccounts")
+                                .document("BasicAccounts")
+                                .collection("Donor")
+                                .document(donorEmail)
+                                .get()
+                                .addOnSuccessListener { donorDoc ->
+                                    if (donorDoc.exists()) {
+                                        handleDonorAccountLogic(
+                                            firestore,
+                                            donationPost,
+                                            donorDoc,
+                                            "BasicAccounts",
+                                            recipientFirstName,
+                                            recipientEmail
+                                        )
+                                    } else {
+                                        // If not found in BasicAccounts, check in VerifiedAccounts
+                                        firestore.collection("GivnGoAccounts")
+                                            .document("VerifiedAccounts")
+                                            .collection("Donor")
+                                            .document(donorEmail)
+                                            .get()
+                                            .addOnSuccessListener { verifiedDonorDoc ->
+                                                if (verifiedDonorDoc.exists()) {
+                                                    handleDonorAccountLogic(
+                                                        firestore,
+                                                        donationPost,
+                                                        verifiedDonorDoc,
+                                                        "VerifiedAccounts",
+                                                        recipientFirstName,
+                                                        recipientEmail
+                                                    )
+                                                } else {
+                                                    Log.e("DonationClaim", "Donor not found in BasicAccounts or VerifiedAccounts")
+                                                }
+                                            }
+                                            .addOnFailureListener { exception ->
+                                                Log.e("FirestoreError", "Error fetching donor from VerifiedAccounts: ", exception)
+                                            }
+                                    }
+                                }
+                                .addOnFailureListener { exception ->
+                                    Log.e("FirestoreError", "Error fetching donor from BasicAccounts: ", exception)
+                                }
+                        }
+                        .addOnFailureListener { exception ->
+                            Log.e("FirestoreError", "Failed to update donation status: ", exception)
+                            Toast.makeText(context, "Failed to update donation status: ${exception.message}", Toast.LENGTH_LONG).show()
+                        }
+                } catch (e: Exception) {
+                    Log.e("FirestoreError", "Unexpected error during status update: ", e)
+                    Toast.makeText(context, "Unexpected error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+
+                try {
+                    // Store the claimed donation in the user's claimed list
+                    firestore.collection("GivnGoAccounts")
+                        .document("BasicAccounts")
+                        .collection("Recipient")
+                        .document(recipientEmail)
+                        .collection("MyClaimedDonations")
+                        .document(donationPost.documentId ?: "defaultDocId")
+                        .set(claimedData)
+                        .addOnSuccessListener {
+                            Log.d("Firestore", "Donation claimed successfully.")
+                            if (donationPost.delivery_method == "Pick-Up") {
+                                firestore.collection("GivnGoAccounts")
+                                    .document("BasicAccounts")
+                                    .collection("Recipient")
+                                    .document(emailRecipient)
+                                    .collection("MySchedules")
+                                    .document("Donations")
+                                    .collection("Schedules")
+                                    .document(donationPost.documentId ?: "defaultDocId")
+                                    .set(pickUpClaimedData)
+                                    .addOnSuccessListener {
+                                        Log.d("Firestore", "Pickup donation")
+                                        selectedPost = null
+                                    }
+                                    .addOnFailureListener { exception ->
+                                        Log.d("FirestoreError", "Pickup donation error", exception)
+                                    }
+                            }
+                            selectedPost = null
+                        }
+                        .addOnFailureListener { exception ->
+                            Log.e("FirestoreError", "Failed to claim donation: ", exception)
+                            Toast.makeText(context, "Failed to claim donation: ${exception.message}", Toast.LENGTH_LONG).show()
+                        }
+                } catch (e: Exception) {
+                    Log.e("FirestoreError", "Unexpected error during claiming: ", e)
+                    Toast.makeText(context, "Unexpected error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }else{
+            val intent = Intent(context, subscriptionDialog::class.java)
+            context.startActivity(intent)
+            }
+        }
+    )
+}
+
+
+}
+
+private fun saveNotificationToFirestore(path: String,context: Context, firestore: FirebaseFirestore, donorEmail: String, recipientFirstName: String, donationTitle: String, imageThumbnail: String?, documentid: String, deliveryPickup: String) {
+  
+   val emailRecipient = SharedPreferences.getEmail(context) ?: "developer@gmail.com"
+    val notificationData = hashMapOf(
+    "document_id" to documentid,
+        "title" to "Your donation was claimed!",
+        "body" to "Your Donation $donationTitle was claimed by $recipientFirstName",
+        "Delivery_method" to deliveryPickup,
+        "thumbnail" to imageThumbnail,
+        "recipient_email" to emailRecipient,
+        "timestamp" to System.currentTimeMillis()
+    )
+
+    val randomUuid = UUID.randomUUID().toString()
+
+    firestore
+    .collection("GivnGoAccounts")
+        .document(path) // Check BasicAccounts or VerifiedAccounts
+        .collection("Donor")
+        .document(donorEmail)
+        .collection("MyNotifications")
+        .document("ClaimedDonations")
+        .collection("Notification")
+        .add(notificationData)
+        .addOnSuccessListener {
+            Log.d("Firestore", "Notification added successfully")
+        }
+        .addOnFailureListener { e ->
+            Log.e("Firestore", "Error adding notification", e)
+        }
+}
