@@ -554,9 +554,9 @@ fun MyApp() {
                         categoryDonationChooser("Meals", selectedCategory) { selectedCategory = it }
                         categoryDonationChooser("Clothings", selectedCategory) { selectedCategory = it }
                         categoryDonationChooser("Furnitures", selectedCategory) { selectedCategory = it }
-                        categoryDonationChooser("Books", selectedCategory) { selectedCategory = it }
-                        categoryDonationChooser("Stationery", selectedCategory) { selectedCategory = it }
-                        categoryDonationChooser("Households items", selectedCategory) { selectedCategory = it }
+                        categoryDonationChooser("Books/Stationery", selectedCategory) { selectedCategory = it }
+                        categoryDonationChooser("Toys", selectedCategory) { selectedCategory = it }
+                        categoryDonationChooser("Daily Necessities", selectedCategory) { selectedCategory = it }
                     }
                     
                     deliveryoptionHeadline()
@@ -661,8 +661,9 @@ fun overlayShadowBottom(
                                 "Meals" -> 10
                                 "Clothings" -> 6
                                 "Furniture" -> 4
-                                "Books", "Stationery" -> 2
-                                "Household items" -> 8
+                                "Books/Stationery" -> 2
+                                "Toys" -> 5
+                                "Daily Necessities" -> 8
                                 else -> 0
                             }
                             
