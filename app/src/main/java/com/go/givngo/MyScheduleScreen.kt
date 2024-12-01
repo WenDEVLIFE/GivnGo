@@ -88,7 +88,7 @@ fun mySchedules() {
                     emailRider = document.getString("rider_email") ?: "",
                     documentIdFromRider = document.getString("rider_trackinf_documentId") ?: "",
                     ticketTrackingId = document.getString("ticket_id") ?: "",
-                    timeRecieved = document.getString("donation_time_mark_as_recieved") ?: ""
+                    timeRecieved = document.getString("donation_time_marked_as_recieved") ?: ""
                 )
 
                 // Add to respective lists based on claimStatus
@@ -278,5 +278,4 @@ fun topCategoryRecipientMySchdules() {
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Start // Align text to the start within the text box
         )
-    }
-}
+    }}
