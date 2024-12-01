@@ -118,6 +118,7 @@ import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.CoroutineScope
 import java.util.UUID
+import androidx.compose.ui.window.Dialog
 
 class postDonation : ComponentActivity() {
 
@@ -552,11 +553,12 @@ fun MyApp() {
                         modifier = Modifier.horizontalScroll(rememberScrollState())
                     ) {
                         categoryDonationChooser("Meals", selectedCategory) { selectedCategory = it }
+                        categoryDonationChooser("Daily Necessities", selectedCategory) { selectedCategory = it }
                         categoryDonationChooser("Clothings", selectedCategory) { selectedCategory = it }
+                        categoryDonationChooser("Toys", selectedCategory) { selectedCategory = it }
                         categoryDonationChooser("Furnitures", selectedCategory) { selectedCategory = it }
                         categoryDonationChooser("Books/Stationery", selectedCategory) { selectedCategory = it }
-                        categoryDonationChooser("Toys", selectedCategory) { selectedCategory = it }
-                        categoryDonationChooser("Daily Necessities", selectedCategory) { selectedCategory = it }
+                        
                     }
                     
                     deliveryoptionHeadline()
@@ -625,6 +627,14 @@ fun overlayShadowBottom(
     val activity = (context as postDonation)
     val firestore = FirebaseFirestore.getInstance()
     var points by remember { mutableStateOf(0) }
+        var showProgressDialog by remember { mutableStateOf(false) }
+        
+        
+            if (showProgressDialog) {
+        CustomProgressDialogWithCancel(
+            onCancel = { showProgressDialog = false }
+        )
+    }
 
         Box(
             modifier = modifier
@@ -633,6 +643,16 @@ fun overlayShadowBottom(
                 .background(color = Color.White),
             contentAlignment = Alignment.CenterEnd
         ) {
+        
+        if (selectedImageUris != null &&
+                firebaseDonationPostTitle.isNotEmpty() &&
+                firebaseOrgName.isNotEmpty() &&
+                firebaseDonationCategory.isNotEmpty() &&
+                firebaseDonationQuantity.isNotEmpty() &&
+                selectedYear.isNotEmpty() &&
+                selectedMonth.isNotEmpty() &&
+                selectedDay.isNotEmpty()
+            ) {
             Text(
                 text = "Post",
                 fontSize = 15.sp,
@@ -640,6 +660,8 @@ fun overlayShadowBottom(
                     .padding(top = 8.dp, end = 16.dp, bottom = 8.dp)
                     .clickable {
                         coroutineScope.launch {
+                        showProgressDialog = true
+                        
                             val uuid = java.util.UUID.randomUUID()
                             var postIdentification = "POST_POINTS-$uuid"
                             val statusType = "Donor"
@@ -753,27 +775,33 @@ fun overlayShadowBottom(
                                                     .collection("Posts")
                                                     .add(donorPostData)
                                                     .addOnSuccessListener {
+                                                    showProgressDialog = false
                                                         activity.finish()
                                                     }
                                                     .addOnFailureListener { exception ->
                                                         coroutineScope.launch {
+                                                        showProgressDialog = false
                                                             scaffoldState.snackbarHostState.showSnackbar(
                                                                 "Error saving post. Check your internet connection and try again."
                                                             )
                                                         }
                                                         Log.e("Firestore", "Error saving public donation post", exception)
+                                                        reportErrorByEmail(context, exception.message)
                                                     }
                                             }
                                             .addOnFailureListener { exception ->
                                                 coroutineScope.launch {
+                                                showProgressDialog = false
                                                     scaffoldState.snackbarHostState.showSnackbar("Error saving post.")
                                                 }
                                                 Log.e("Firestore", "Error saving donation post", exception)
+                                                reportErrorByEmail(context, exception.message)
                                             }
                                         }
                                     }
                                     .addOnFailureListener { exception ->
                                         coroutineScope.launch {
+                                        showProgressDialog = false
                                             scaffoldState.snackbarHostState.showSnackbar(
                                                 "Error: ${exception.message}. Report issue?"
                                             )
@@ -783,7 +811,10 @@ fun overlayShadowBottom(
                             } catch (e: Exception) {
                                 Log.e("Firestore", "Exception saving data", e)
                                 coroutineScope.launch {
+                                showProgressDialog = false
                                     scaffoldState.snackbarHostState.showSnackbar("An error occurred. Try again.")
+                                    
+                                    reportErrorByEmail(context, exception.message)
                                 }
                             }
                         }
@@ -792,6 +823,21 @@ fun overlayShadowBottom(
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.End
             )
+            
+            }else{
+            Text(
+                text = "Post",
+                fontSize = 15.sp,
+                modifier = Modifier
+                    .padding(top = 8.dp, end = 16.dp, bottom = 8.dp)
+                    .clickable {
+                    },
+                color = Color(0xFFE3DFFF),
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.End
+            )
+            }
+            
     }
 }
 
@@ -835,6 +881,38 @@ suspend fun uploadImagesToStorage(
     }
 
     return Pair(thumbnailUrl, otherImageUrls)
+}
+
+@Composable
+fun CustomProgressDialogWithCancel(onCancel: () -> Unit) {
+    Dialog(onDismissRequest = { /* Do nothing on dismiss */ }) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Posting your donation..."
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Please wait while your post is being added."
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                TextButton(onClick = { onCancel() }) {
+                    Text(text = "Cancel", color = Color(0xFF8070F6))
+                }
+            }
+        }
+    }
 }
 
 
