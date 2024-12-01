@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
@@ -42,55 +42,79 @@ import coil.compose.AsyncImage
 import com.go.givngo.Model.DonationSchedule
 import com.go.givngo.Model.LottieAnimationFromUrl
 import com.google.firebase.firestore.FirebaseFirestore
+import com.go.givngo.ridersSide.PackageView
 
+import android.content.Intent
 @Composable
 fun mySchedules() {
     val context = LocalContext.current
     var selectedCategory by remember { mutableStateOf("Deliveries") }
     val pickupSchedules = remember { mutableStateListOf<DonationSchedule>() }
     val deliverySchedules = remember { mutableStateListOf<DonationSchedule>() }
+    val deliveredSchedules = remember { mutableStateListOf<DonationSchedule>() }
     val firestore = FirebaseFirestore.getInstance()
 
     val isError = remember { mutableStateOf(false) }
 
-    val statusType = "Donor"
-    val emailDonor = SharedPreferences.getOrgName(context) ?: "developer@gmail.com"
+    val statusType = "Recipient"
+    var request by remember { mutableStateOf("") }
+    val emailDonor = SharedPreferences.getEmail(context) ?: "developer@gmail.com"
+    val accountBasicType = SharedPreferences.getBasicType(context) ?: ""
+
 
     LaunchedEffect(Unit) {
-        firestore.collection("GivnGoAccounts")
-            .document(statusType)
-            .collection("MySchedules")
-            .document(emailDonor)
-            .collection("schedules") // Assuming schedules are stored in this sub-collection
-            .get()
-            .addOnSuccessListener { querySnapshot ->
-                pickupSchedules.clear()
-                deliverySchedules.clear()
-                for (document in querySnapshot.documents) {
-                    val claimStatus = document.getString("donation_schedule_status")
-                    val donationPost = DonationSchedule(
-                        userClaimedDonation = document.getString("donation_post_title") ?: "",
-                        donationDescription = document.getString("donation_post_description") ?: "",
-                        packageStatus = document.getString("donation_status") ?: "",
-                        imageUri = null // Update this if there’s an image field
-                    )
+    firestore.collection("GivnGoAccounts")
+        .document(accountBasicType)
+        .collection(statusType)
+        .document(emailDonor)
+        .collection("MySchedules")
+        .document("Donations")
+        .collection("Schedules")
+        .get()
+        .addOnSuccessListener { querySnapshot ->
+            pickupSchedules.clear()
+            deliverySchedules.clear()
+            for (document in querySnapshot.documents) {
+                val claimStatus = document.getString("donation_schedule_status")
+                val donationPost = DonationSchedule(
+                    documentId = document.id, // Store the document ID
+                    userClaimedDonation = document.getString("donation_post_title") ?: "",
+                    donationDescription = document.getString("donation_post_description") ?: "",
+                    packageStatus = document.getString("donation_schedule_status") ?: "",
+                    donorEmail = document.getString("donor_email_contact") ?: "",
+                    donationThumbnail = document.getString("donation_thumbnail") ?: "",
+                    donationQuantity = document.getString("donation_quantity") ?: "",
+                    donorAddress = document.getString("donor_address") ?: "",
+                    emailRider = document.getString("rider_email") ?: "",
+                    documentIdFromRider = document.getString("rider_trackinf_documentId") ?: "",
+                    ticketTrackingId = document.getString("ticket_id") ?: "",
+                    timeRecieved = document.getString("donation_time_marked_as_recieved") ?: ""
+                )
 
-                    // Add to respective lists based on claimStatus
-                    if (claimStatus == "Pickup") {
-                        pickupSchedules.add(donationPost)
-                    } else if (claimStatus == "Delivery") {
-                        deliverySchedules.add(donationPost)
-                    }
+                // Add to respective lists based on claimStatus
+                if (claimStatus == "Pick-Up Status: Rider on its way to collect the package") {
+                    pickupSchedules.add(donationPost)
+                    request = "ConfirmPickupRecipient"
+                } else if (claimStatus == "In-Transit Status: Rider is on its way") {
+                    request = "InTransit"
+                    deliverySchedules.add(donationPost)
+                } else if (claimStatus == "Donor's Confirmation: Pending") {
+                    request = "Confirmation"
+                    deliverySchedules.add(donationPost)
+                } else if (claimStatus == "Delivered") {
+                    request = "Delivered"
+                    deliveredSchedules.add(donationPost)
                 }
-                // Set error state to true if both lists are empty
-                isError.value = deliverySchedules.isEmpty() && pickupSchedules.isEmpty()
             }
-            .addOnFailureListener { exception ->
-                Log.e("Firestore", "Error retrieving donation posts", exception)
-                isError.value = true
-            }
+            // Set error state to true if both lists are empty
+            isError.value = deliverySchedules.isEmpty() && pickupSchedules.isEmpty()
+        }
+        .addOnFailureListener { exception ->
+            Log.e("Firestore", "Error retrieving donation posts", exception)
+            isError.value = true
+        }
+}
 
-    }
 
     Column(
         modifier = Modifier
@@ -107,10 +131,11 @@ fun mySchedules() {
         Row(
             modifier = Modifier
                 .horizontalScroll(rememberScrollState())
-                .padding(start = 30.dp)
+                .padding(start = 30.dp,end = 20.dp)
         ) {
             categoryDonationChooser("Deliveries", selectedCategory) { selectedCategory = it }
             categoryDonationChooser("Pickups", selectedCategory) { selectedCategory = it }
+            categoryDonationChooser("Delivered", selectedCategory) { selectedCategory = it }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -118,7 +143,7 @@ fun mySchedules() {
         Spacer(modifier = Modifier.height(4.dp))
 
         // Determine the selected items list based on the category
-        val itemsList = if (selectedCategory == "Deliveries") deliverySchedules else pickupSchedules
+        val itemsList = if (selectedCategory == "Deliveries") deliverySchedules else if (selectedCategory == "Delivered") deliveredSchedules else pickupSchedules
 
         if (itemsList.isEmpty()) {
             // Show Lottie animation if the selected category's list is empty
@@ -137,27 +162,23 @@ fun mySchedules() {
             }
         } else {
             // Display the LazyRow for the selected items list
-            LazyRow(
+            LazyColumn(
                 contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items(itemsList.size) { index ->
                     val donation = itemsList[index]
                     displaySchedulesDonationModel(
                         userClaimedDonation = donation.userClaimedDonation,
-                        imageUri = donation.imageUri,
+                        imageUri = donation.donationThumbnail,
                         donationDescription = donation.donationDescription,
                         packageStatus = donation.packageStatus,
                         onClick = {
-                            /* val intent = Intent(context, YourTargetActivity::class.java).apply {
-                                 putExtra("userClaimedDonation", donation.userClaimedDonation)
-                                 putExtra("donationDescription", donation.donationDescription)
-                                 putExtra("packageStatus", donation.packageStatus)
-                                 donation.imageUri?.let { uri ->
-                                     putExtra("imageUri", uri.toString())
-                                 }
+                             val intent = Intent(context, PackageView::class.java).apply {
+                                 putExtra("packageViewType", request)
+                                 putExtra("donationPackageRequest", donation)
                              }
-                             context.startActivity(intent) */
+                             context.startActivity(intent) 
                         }
                     )
                 }
@@ -171,25 +192,30 @@ fun mySchedules() {
 fun displaySchedulesDonationModel(
     userClaimedDonation: String,
     donationDescription: String,
-    imageUri: Uri?,
+    imageUri: String,
     packageStatus: String,
     onClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.Start,
         modifier = Modifier
+       
             .padding(start = 15.dp, end = 15.dp)
             .clickable { onClick() }
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
+             .fillMaxWidth()
                 .heightIn(min = 120.dp)
-                .padding(6.dp)
                 .clip(RoundedCornerShape(18.dp))
                 .background(Color(0xFFFAF9FF))
+
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(6.dp) // Apply padding to Row instead of Box
+            ) {
                 AsyncImage(
                     model = imageUri,
                     contentDescription = null,
@@ -205,6 +231,7 @@ fun displaySchedulesDonationModel(
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(start = 10.dp)
+                       
                 ) {
                     Text(
                         text = userClaimedDonation,
@@ -233,6 +260,7 @@ fun displaySchedulesDonationModel(
         )
     }
 }
+
 @Composable
 fun topCategoryRecipientMySchdules() {
 
