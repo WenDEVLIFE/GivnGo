@@ -631,7 +631,7 @@ fun overlayShadowBottom(
         
         
             if (showProgressDialog) {
-        CustomProgressDialogWithCancel(
+        CustomProgressDialogWithCancelPostDonation(
             onCancel = { showProgressDialog = false }
         )
     }
@@ -645,14 +645,13 @@ fun overlayShadowBottom(
         ) {
         
         if (selectedImageUris != null &&
-                firebaseDonationPostTitle.isNotEmpty() &&
-                firebaseOrgName.isNotEmpty() &&
-                firebaseDonationCategory.isNotEmpty() &&
-                firebaseDonationQuantity.isNotEmpty() &&
-                selectedYear.isNotEmpty() &&
-                selectedMonth.isNotEmpty() &&
-                selectedDay.isNotEmpty()
-            ) {
+        firebaseDonationPostTitle.isNotEmpty() &&
+        firebaseDonationCategory?.isNotEmpty() == true &&
+        firebaseDeliveryMethod?.isNotEmpty() == true &&
+        firebaseDonationQuantity.isNotEmpty() &&
+        selectedYear.isNotEmpty() &&
+        selectedMonth.isNotEmpty() &&
+        selectedDay.isNotEmpty()) {
             Text(
                 text = "Post",
                 fontSize = 15.sp,
@@ -814,7 +813,7 @@ fun overlayShadowBottom(
                                 showProgressDialog = false
                                     scaffoldState.snackbarHostState.showSnackbar("An error occurred. Try again.")
                                     
-                                    reportErrorByEmail(context, exception.message)
+                                    reportErrorByEmail(context, e.message)
                                 }
                             }
                         }
@@ -884,7 +883,7 @@ suspend fun uploadImagesToStorage(
 }
 
 @Composable
-fun CustomProgressDialogWithCancel(onCancel: () -> Unit) {
+fun CustomProgressDialogWithCancelPostDonation(onCancel: () -> Unit) {
     Dialog(onDismissRequest = { /* Do nothing on dismiss */ }) {
         Surface(
             modifier = Modifier
