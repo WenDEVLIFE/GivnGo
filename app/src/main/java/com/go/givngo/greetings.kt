@@ -197,13 +197,17 @@ fun MyAppGreetings() {
     var isDescriptionVisible by remember { mutableStateOf(true) }
     var isFadingOut by remember { mutableStateOf(false) }
 
+    var showDisclaimer by remember { mutableStateOf(true) }
+    var disclaimerAlpha by remember { mutableStateOf(1f) }
+
     val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
-    contract = ActivityResultContracts.StartActivityForResult(),
-    onResult = { result -> 
-        // Handle the result from the launched activity
-    })
-    
+        contract = ActivityResultContracts.StartActivityForResult(),
+        onResult = { result ->
+            // Handle the result from the launched activity
+        }
+    )
+
     val activity = (context as greetings)
 
     val images = listOf(
@@ -219,6 +223,21 @@ fun MyAppGreetings() {
         }
     }
 
+    // Timer for the disclaimer with fade-out animation
+    LaunchedEffect(showDisclaimer) {
+        if (showDisclaimer) {
+            delay(8000) // Wait 8 seconds before starting fade-out
+            val fadeOutDuration = 2000 // 2 seconds for fade-out
+            val stepDelay = fadeOutDuration / 20 // 20 steps to fade out
+            repeat(20) {
+                delay(stepDelay.toLong())
+                disclaimerAlpha -= 0.05f // Gradually reduce alpha
+            }
+            disclaimerAlpha = 0f
+            showDisclaimer = false
+        }
+    }
+
     SideEffect {
         WindowCompat.setDecorFitsSystemWindows(activity.window, false)
         activity.window.statusBarColor = Color.Transparent.toArgb()
@@ -226,75 +245,95 @@ fun MyAppGreetings() {
             ?.isAppearanceLightStatusBars = false
     }
 
-    Crossfade(targetState = images[currentImageIndex], animationSpec = tween(durationMillis = 1000)) { image ->
-        Image(
-            painter = painterResource(id = image),
-            contentDescription = null,
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Transparent),
-            contentScale = ContentScale.Crop
-        )
-    }
-
-    Scaffold(
-        scaffoldState = scaffoldState,
-        backgroundColor = Color.Transparent,
-        topBar = { TopBarGreetings() },
-        modifier = Modifier
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .background(color = Color.Transparent)
-    ) { innerPadding ->
+    if (showDisclaimer) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .background(Color.White.copy(alpha = disclaimerAlpha)),
+            contentAlignment = Alignment.Center
         ) {
-            Column(
+            Text(
+                text = "GivnGo is a personal project created for testing purposes on the Google Play Console. It is not affiliated with any organization, business, or registered entity.",
+                  textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.h6.copy(color = Color.Black),
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    } else {
+        Crossfade(targetState = images[currentImageIndex], animationSpec = tween(durationMillis = 1000)) { image ->
+            Image(
+                painter = painterResource(id = image),
+                contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(Color.Transparent),
+                contentScale = ContentScale.Crop
+            )
+        }
+
+        Scaffold(
+            scaffoldState = scaffoldState,
+            backgroundColor = Color.Transparent,
+            topBar = { TopBarGreetings() },
+            modifier = Modifier
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .background(color = Color.Transparent)
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
             ) {
-                Crossfade(targetState = isExpanded, animationSpec = tween(durationMillis = 1000)) { expanded ->
-                    greetingsTitle(
-                        isExpanded = expanded,
-                        isDescriptionVisible = isDescriptionVisible,
-                        onTransitionEnd = {
-                            isGetStartedVisible = true
-                            isDescriptionVisible = true
-                        },
-                        isFadingOut = isFadingOut
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                ) {
+                    Crossfade(targetState = isExpanded, animationSpec = tween(durationMillis = 1000)) { expanded ->
+                        greetingsTitle(
+                            isExpanded = expanded,
+                            isDescriptionVisible = isDescriptionVisible,
+                            onTransitionEnd = {
+                                isGetStartedVisible = true
+                                isDescriptionVisible = true
+                            },
+                            isFadingOut = isFadingOut
+                        )
+                    }
+                }
+
+                asOptions(isVisible = isFadingOut)
+
+                // Align Get Started and Sign in buttons at the bottom
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 60.dp)
+                        .align(Alignment.BottomCenter),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    getStarted(
+                        isVisible = isFadingOut,
+                        onClick = {
+                            isFadingOut = true
+                        }
+                    )
+
+                    signIn(
+                        isVisible = isFadingOut,
+                        onClick = {
+                            val intent = Intent(context, signInActivity::class.java)
+                            launcher.launch(intent)
+                        }
                     )
                 }
-            }
-            
-            asOptions(isVisible = isFadingOut)
-
-            // Align Get Started and Sign in buttons at the bottom
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 60.dp)
-                    .align(Alignment.BottomCenter),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                getStarted(
-                    isVisible = isFadingOut,
-                    onClick = {
-                        isFadingOut = true
-                    }
-                )
-                
-                signIn(isVisible = isFadingOut, 
-                onClick = {
-                val intent = Intent(context, signInActivity::class.java)
-                launcher.launch(intent)
-                })
             }
         }
     }
 }
+
+
 
 @Composable
 fun signInPart(isVisible: Boolean, onClick: () -> Unit) {
